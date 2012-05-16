@@ -1,5 +1,5 @@
 COMPONENT=SpectrumMonitorAppC
-CFLAGS +=  -I./cc2420/
+CFLAGS +=  -I./cc2420/ -pthread
 PYTHON_MSG_FILES = CBSweepDataMsg.py CBChannelMaskMsg.py CBRepoQueryMsg.py
 C_MSG_HEADER_FILES = CBSweepDataMsg.h CBChannelMaskMsg.h CBRepoQueryMsg.h
 C_TEST_PROGRAM = test
