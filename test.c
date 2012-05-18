@@ -212,6 +212,7 @@ int send_message(int fd_sfsource, char *sfhost, char *sfport,  int data, int cou
         printf("First open a connection before sending\n");
         exit(1);
   }
+//This Part is Commented
 /*  unsigned char *packet;
   packet = malloc(count);
   if (!packet)
@@ -226,6 +227,8 @@ int send_message(int fd_sfsource, char *sfhost, char *sfport,  int data, int cou
   fprintf(stderr, "\n");
 
   returnval = write_sf_packet(fd_sfsource, packet, count);*/
+//Till here
+
     uint16_t moteId;
     uint8_t i;
     uint8_t packet_size = 1+ SPACKET_SIZE;
@@ -240,7 +243,7 @@ int send_message(int fd_sfsource, char *sfhost, char *sfport,  int data, int cou
     for(i=0;i<packet_size;i++)
         packet[i] = 0;
 
-    packet[0] == CB_CHANNELMASK_MSG_AM_TYPE;
+//  packet[0] == CB_CHANNELMASK_MSG_AM_TYPE;
 
     msg = new_tmsg(packet + 1,packet_size - 1);
 
