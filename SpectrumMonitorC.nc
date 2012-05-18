@@ -140,8 +140,10 @@ implementation {
 
       if (m_isChannelMaskMsgReady) { // send a packet now!
         call CC2420Power.rfOff();
+        call SpiResource.release(); 
         if (call CC2420Tx.loadTXFIFO(m_channelMaskMpdu) != SUCCESS) {
           call Leds.led0On();
+          call SpiResource.immediateRequest();
           call CC2420Power.rxOn();
         }
       } else
@@ -178,7 +180,6 @@ implementation {
     uint8_t *amid = (uint8_t*) (((uint8_t*) header));
     cb_channelmask_msg_t *channelmask_msg = (cb_channelmask_msg_t*) (((uint8_t*) header)+1);
 
-    call Leds.led1Toggle();
     if (len != sizeof(cb_channelmask_msg_t) || m_isChannelMaskMsgReady) {
       call Leds.led0On();
       return bufPtr;
@@ -202,13 +203,16 @@ implementation {
   }
 
   async event void CC2420Tx.loadTXFIFODone(uint8_t *data, error_t error ) {
+    call SpiResource.immediateRequest();
     call CC2420Tx.send();
   }
 
   async event void CC2420Tx.sendDone(uint8_t *data, uint16_t time, error_t error) {
     m_isChannelMaskMsgReady = FALSE;
     call CC2420Power.flushRxFifo();
-    call CC2420Power.rxOn();
+    call CC2420Power.rxOn(); 
+    if (error == SUCCESS)
+      call Leds.led1Toggle();
     call Alarm.startAt(tlast, SAMPLING_PERIOD); // continue with noise sampling
   }
 
