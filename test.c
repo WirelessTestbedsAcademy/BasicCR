@@ -156,6 +156,7 @@ int listen_message(void* struct1)
       printf("Error: invalid packet!\n"); 
       exit(0);
     }
+    uint8_t amtype = packet[SPACKET_SIZE];
 
 /*    curtime=tv.tv_sec;*/
 /*    strftime(dateBuf,50,"%H %M %S", localtime(&curtime));*/
@@ -176,8 +177,7 @@ int listen_message(void* struct1)
               spacket_header_length_get(msg),
               spacket_header_group_get(msg),
               spacket_header_type_get(msg));
-      hexprint((uint8_t *)tmsg_data(msg) + spacket_data_offset(0),
-                tmsg_length(msg) - spacket_data_offset(0));
+      hexprint((uint8_t *)tmsg_data(msg) + spacket_data_offset(0), tmsg_length(msg) - spacket_data_offset(0));
 
       switch (amtype)
       {
@@ -202,16 +202,17 @@ int listen_message(void* struct1)
 // pthread_exit(NULL);
 }
 
-int send_message(int fd_sfsource, char *sfhost, char *sfport, int data, int count)
+int send_message(int fd_sfsource, char *sfhost, char *sfport,  int data, int count)
 {
 
-  int i, returnval;
+  int returnval;
+//  int i;
   if(sfhost==NULL || sfport==NULL)
   {
         printf("First open a connection before sending\n");
         exit(1);
   }
-  unsigned char *packet;
+/*  unsigned char *packet;
   packet = malloc(count);
   if (!packet)
     exit(2);
@@ -224,7 +225,34 @@ int send_message(int fd_sfsource, char *sfhost, char *sfport, int data, int coun
     fprintf(stderr, " %02x", packet[i]);
   fprintf(stderr, "\n");
 
-  returnval = write_sf_packet(fd_sfsource, packet, count); 
+  returnval = write_sf_packet(fd_sfsource, packet, count);*/
+    uint16_t moteId;
+    uint8_t i;
+    uint8_t packet_size = 1+ SPACKET_SIZE;
+    unsigned char *packet;
+    tmsg_t* msg;
+
+    packet = malloc(packet_size);
+   
+        if (!packet)
+            exit(2);
+
+    for(i=0;i<packet_size;i++)
+        packet[i] = 0;
+
+    packet[0] == CB_CHANNELMASK_MSG_AM_TYPE;
+
+    msg = new_tmsg(packet + 1,packet_size - 1);
+
+//    printf("Input mote destination address: ");
+//    scanf("%hu",&moteId);
+    spacket_header_dest_set(msg,65535);
+    spacket_header_src_set(msg, 0);
+    spacket_header_length_set(msg, CB_CHANNELMASK_MSG_DATA_SIZEBITS);
+    spacket_header_type_set(msg, CB_CHANNELMASK_MSG_AM_TYPE);
+
+    returnval = write_sf_packet(fd_sfsource, packet, packet_size);
+    printf("Sent \n");
   return returnval;
 }
 
@@ -251,10 +279,10 @@ int main(int argc, char **argv)
           exit(-1);
 	}
 //	}
-//	listen_message(fd, sfhost, sfport);	
-	
-	printf("Enter the data to be sent\n");
-	scanf("%d",&data);
+	data = 0;
+//	printf("Enter the data to be sent\n");
+//	scanf("%d",&data);
 	send_message(fd, sfhost, sfport, data, 1);
    	return pthread_join(thread1, NULL); /* Wait until thread is finished */
-}
+	return 0;
+} 
