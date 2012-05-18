@@ -199,81 +199,53 @@ int listen_message(void* struct1)
     }
     fflush(stdout);
   }
-// pthread_exit(NULL);
 }
 
-int send_message(int fd_sfsource, char *sfhost, char *sfport,  int data, int count)
+int send_message(int fd_sfsource, char *sfhost, char *sfport)
 {
 
   int returnval;
-//  int i;
   if(sfhost==NULL || sfport==NULL)
   {
         printf("First open a connection before sending\n");
         exit(1);
   }
-//This Part is Commented
-/*  unsigned char *packet;
-  packet = malloc(count);
-  if (!packet)
-    exit(2);
 
-  for (i = 0; i < count; i++)
-    packet[i] = data;
+  int i;
+  char count = 10;
+  unsigned char packet[10];
+  
+  packet[0] = 0x00;    //sync byte 
+  packet[1] = 0xff;    //destination
+  packet[2] = 0xff;    //destination
+  packet[3] = 0x00;    //link source 
+  packet[4] = 0x00;    //link source
+  packet[5] = 0x02;    //message length
+  packet[6] = 0x00;    //group id
+  packet[7] = CB_CHANNELMASK_MSG_AM_TYPE;     //Active message handler type
+  packet[8] = 0x0;     //Payload
+  packet[9] = 0x1;
 
   fprintf(stderr,"Sending ");
   for (i = 0; i < count; i++)
     fprintf(stderr, " %02x", packet[i]);
   fprintf(stderr, "\n");
-
-  returnval = write_sf_packet(fd_sfsource, packet, count);*/
-//Till here
-
-    uint16_t moteId;
-    uint8_t i;
-    uint8_t packet_size = 1+ SPACKET_SIZE;
-    unsigned char *packet;
-    tmsg_t* msg;
-
-    packet = malloc(packet_size);
-   
-        if (!packet)
-            exit(2);
-
-    for(i=0;i<packet_size;i++)
-        packet[i] = 0;
-
-//  packet[0] == CB_CHANNELMASK_MSG_AM_TYPE;
-
-    msg = new_tmsg(packet + 1,packet_size - 1);
-
-//    printf("Input mote destination address: ");
-//    scanf("%hu",&moteId);
-    spacket_header_dest_set(msg,65535);
-    spacket_header_src_set(msg, 0);
-    spacket_header_length_set(msg, CB_CHANNELMASK_MSG_DATA_SIZEBITS);
-    spacket_header_type_set(msg, CB_CHANNELMASK_MSG_AM_TYPE);
-
-    returnval = write_sf_packet(fd_sfsource, packet, packet_size);
-    printf("Sent \n");
-  return returnval;
+  write_sf_packet(fd_sfsource, packet, count);
 }
 
 
 int main(int argc, char **argv)
 {
-	int fd,count;
-	int data;
+	int fd;
 	int rc;
    	long t;
-	char c;
         pthread_t thread1;
 	fd = open_connection(argc, argv);
 	struct arg_struct struct1;
 	struct1.arg1 = fd;
 	struct1.arg2 = sfhost;
 	struct1.arg3 = sfport;
-//      for (t=0;t<NUM_THREADS;t++)
+//      for (t=0;t<NUM_THREADS;t++)   Uncomment this if you want to create more threads
 //	{
 	printf("In main: creating thread %ld\n", t);	
 	rc = pthread_create(&thread1, NULL,(void*) listen_message,(void*)&struct1);
@@ -282,10 +254,6 @@ int main(int argc, char **argv)
           exit(-1);
 	}
 //	}
-	data = 0;
-//	printf("Enter the data to be sent\n");
-//	scanf("%d",&data);
-	send_message(fd, sfhost, sfport, data, 1);
+	send_message(fd, sfhost, sfport);
    	return pthread_join(thread1, NULL); /* Wait until thread is finished */
-	return 0;
 } 
