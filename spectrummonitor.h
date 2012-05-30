@@ -39,6 +39,7 @@ enum {
 };
 
 typedef nx_struct cb_sweep_data_msg {
+  nx_uint8_t src;        // the ID of the node where this message originates from
   nx_uint8_t errorcode;  // should always be 0
   nx_uint32_t seqno;     // incremented after every transmitted message
   nx_int8_t rssi[NUM_FREQUENCIES];

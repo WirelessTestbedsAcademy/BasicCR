@@ -154,6 +154,11 @@ implementation {
   task void sendDataTask()
   {
     atomic {
+      if (m_currentSweepMsgPtr != NULL) {
+        cb_sweep_data_msg_t *s = call SerialPacket.getPayload(m_currentSweepMsgPtr, sizeof(cb_sweep_data_msg_t));
+        if (s != NULL)
+          s->src = TOS_NODE_ID;
+      }
       if (call SendSweepData.send(AM_BROADCAST_ADDR, m_currentSweepMsgPtr, sizeof(cb_sweep_data_msg_t)) != SUCCESS) {
         if (call Queue.enqueue(m_currentSweepMsgPtr) != SUCCESS)
           call Leds.led0On();
