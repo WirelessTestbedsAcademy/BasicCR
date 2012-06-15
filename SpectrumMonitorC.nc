@@ -3,7 +3,7 @@
 #include <UserButton.h>
 #include "message.h"
 
-module SpectrumMonitorC {
+generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
   uses {
     interface Boot;
     interface Leds;
@@ -110,7 +110,8 @@ implementation {
 
   async event void Alarm.fired()
   {
-    uint32_t now = call Alarm.getNow();
+    uint32_t start = call Alarm.getNow();
+    int8_t rssi,tmp;
 
     atomic {
 
@@ -118,7 +119,7 @@ implementation {
         m_overflow2 = TRUE;
       else {
 
-        if (now>32767 && now > tlast + SAMPLING_PERIOD + 1)
+        if (start>32767 && start > tlast + SAMPLING_PERIOD + 1)
           m_currentSweep->errorcode |= OVERFLOW1_ERROR;
 
         if (m_overflow2) {
@@ -126,7 +127,17 @@ implementation {
           m_currentSweep->errorcode |= OVERFLOW2_ERROR;
         }
 
-        m_currentSweep->rssi[findex] = readRssiFast() - 45;
+        rssi = readRssiFast();
+        while (call Alarm.getNow() < start + DWELL_TIME)
+        {
+          tmp = readRssiFast();
+          switch (DWELL_MODE)
+          {
+            case MODE_MAX: if (tmp > rssi) rssi = tmp; break;
+            case MODE_MIN: if (tmp < rssi) rssi = tmp; break;
+          }
+        }
+        m_currentSweep->rssi[findex] = rssi - 45;
 
         call CC2420Power.rfOff();
         call CC2420Power.setFrequency(fvector[findex++]);

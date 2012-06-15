@@ -8,7 +8,7 @@
 configuration SpectrumMonitorAppC{
 }
 implementation {
-  components MainC, SpectrumMonitorC as App, LedsC;
+  components MainC, new SpectrumMonitorC(MODE_MAX) as App, LedsC;
 
   App.Boot -> MainC;
   App.Leds -> LedsC;
