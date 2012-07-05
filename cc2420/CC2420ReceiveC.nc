@@ -79,7 +79,7 @@ implementation {
   CC2420ReceiveP.SRXON -> Spi.SRXON;
   CC2420ReceiveP.SRFOFF -> Spi.SRFOFF;
   CC2420ReceiveP.MDMCTRL1 -> Spi.MDMCTRL1;
-  CC2420ReceiveP.TXFIFO_RAM -> Spi.TXFIFO_RAM;
+/*  CC2420ReceiveP.TXFIFO_RAM -> Spi.TXFIFO_RAM;*/
 /*  CC2420ReceiveP.CC2420Packet -> CC2420PacketC;*/
 /*  CC2420ReceiveP.CC2420PacketBody -> CC2420PacketC;*/
   CC2420ReceiveP.CC2420Config -> CC2420ControlC;

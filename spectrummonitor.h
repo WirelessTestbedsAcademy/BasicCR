@@ -20,6 +20,9 @@ typedef enum {
 } dwell_mode_t;
 
 enum {
+  CONTROL_CHANNEL_FREQUENCY = 2480, // 2480=channel 26
+  CONTROL_CHANNEL_LISTEN_TIME = 16000, // after every sweep we listen CONTROL_CHANNEL_LISTEN_TIME 32khz ticks on the control channel
+
   SAMPLING_PERIOD = (32768U/NUM_FREQUENCIES), // ticks of ACLK, which runs at 32768 Hz, use values below 64 at your own risk!
   DWELL_TIME = 327, // the time we sample a given frequency, in ticks of which runs at 32768 Hz. MUST be smaller than SAMPLING_PERIOD! (set to zero if you only want a single sample)
   MSG_QUEUE_SIZE = 10,
@@ -37,7 +40,7 @@ enum {
 
 /*** no need to change anything below ***/
 
-#define TOSH_DATA_LENGTH 200
+//#define TOSH_DATA_LENGTH 200
 
 enum {
   AM_CB_SWEEP_DATA_MSG = 0XB0,

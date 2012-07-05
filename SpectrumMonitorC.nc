@@ -18,6 +18,7 @@ generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
     interface StdControl as TxControl;
     interface AsyncSplitControl as RxControl;
     interface CC2420Tx;
+    interface CC2420Rx;      
 
     /* serial */
     interface SplitControl as SerialControl;
@@ -33,9 +34,9 @@ implementation {
   norace cb_sweep_data_msg_t *m_currentSweep;
   uint16_t fvector[] = FREQUENCY_VECTOR;
   norace uint16_t findex;
-  norace uint32_t tlast;
   norace uint32_t m_seqno;
   norace bool m_overflow2;
+  norace bool m_ctrlChannelListen;
 
   norace bool m_isChannelMaskMsgReady;
   norace uint8_t m_channelMaskMpdu[sizeof(header_154_t) + 1 + sizeof(cb_channelmask_msg_t) + 2]; // extra 1 for AM ID, extra 2 for MAC CRC
@@ -48,6 +49,7 @@ implementation {
   void setNextSweepDataMsg();
   inline int8_t readRssiFast();
   task void sendRepoQueryTask();
+  task void forwardRepoQueryMsgTask();
 
   event void Boot.booted() 
   {
@@ -61,8 +63,7 @@ implementation {
 
   event void SerialControl.startDone(error_t err) 
   {
-    call UserButton.enable();
-    call Leds.led2On();
+/*    call UserButton.enable();*/
     call SpiResource.request();
   }
 
@@ -102,10 +103,8 @@ implementation {
 
     call CC2420Power.flushRxFifo();
     call CC2420Power.rxOn();
-    call Leds.led2Off();
 
-    tlast = call Alarm.getNow();
-    call Alarm.startAt(tlast, SAMPLING_PERIOD);
+    call Alarm.start(SAMPLING_PERIOD);
   }
 
   async event void Alarm.fired()
@@ -114,12 +113,26 @@ implementation {
     int8_t rssi,tmp;
 
     atomic {
+      
+      if (m_ctrlChannelListen) {
+        if (call SpiResource.immediateRequest() != SUCCESS) {
+          call Alarm.start(32); // spin
+          return;
+        }
+        m_ctrlChannelListen = FALSE;
+        call CC2420Power.rfOff();
+        call CC2420Power.flushRxFifo();
+        call CC2420Power.setFrequency(fvector[findex]);
+        call CC2420Power.rxOn();       
+        call Alarm.start(32); // some time for the radio to get ready for RSSI sampling
+        return;
+      }
 
       if (findex == NUM_FREQUENCIES)
         m_overflow2 = TRUE;
       else {
 
-        if (start>32767 && start > tlast + SAMPLING_PERIOD + 1)
+        if (start>32767 && start > call Alarm.getNow() + SAMPLING_PERIOD + 1)
           m_currentSweep->errorcode |= OVERFLOW1_ERROR;
 
         if (m_overflow2) {
@@ -139,15 +152,23 @@ implementation {
         }
         m_currentSweep->rssi[findex] = rssi - 45;
 
-        call CC2420Power.rfOff();
-        call CC2420Power.setFrequency(fvector[findex++]);
-        call CC2420Power.rxOn();
-
-        if (findex == NUM_FREQUENCIES)
+        if (findex == NUM_FREQUENCIES-1) {
+          // finished a sweep: send result over serial and, for a while, tune into control channel
           post sendDataTask();
+          call CC2420Power.rfOff();
+          call CC2420Power.setFrequency(CONTROL_CHANNEL_FREQUENCY);
+          call CC2420Power.rxOn();
+          call SpiResource.release();
+          m_ctrlChannelListen = TRUE;
+          call Alarm.start(CONTROL_CHANNEL_LISTEN_TIME);
+          return;
+        } else {
+          call CC2420Power.rfOff();
+          call CC2420Power.flushRxFifo();
+          call CC2420Power.setFrequency(fvector[findex++]);
+          call CC2420Power.rxOn();
+        }
       }
-
-      tlast += SAMPLING_PERIOD;
 
       if (m_isChannelMaskMsgReady) { // send a packet now!
         call CC2420Power.rfOff();
@@ -158,8 +179,34 @@ implementation {
           call CC2420Power.rxOn();
         }
       } else
-        call Alarm.startAt(tlast, SAMPLING_PERIOD);
+        call Alarm.startAt(call Alarm.getNow(), SAMPLING_PERIOD);
     }
+  }
+
+  cb_repo_query_msg_t m_repoQueryPayload;
+  async event bool CC2420Rx.receive(uint8_t *data, uint16_t time, bool isTimeValid)
+  {
+    // reveived a message over the radio
+    uint16_t len = data[0];
+    call Leds.led2Toggle();
+    if (len == 13 + sizeof(cb_repo_query_msg_t)) { // 13 is the MAC overhead for our frames
+      memcpy(&m_repoQueryPayload, &data[12], sizeof(cb_repo_query_msg_t));
+      post forwardRepoQueryMsgTask();
+    }
+    return FALSE;
+  }
+
+  task void forwardRepoQueryMsgTask()
+  {
+    // fake a cb_repo_query_msg_t
+    m_repoQuery->forwarder = m_repoQueryPayload.forwarder;   // TWIST node ID
+    m_repoQuery->srcID = m_repoQueryPayload.srcID;      // BAN src ID
+    m_repoQuery->srcPANID = m_repoQueryPayload.srcPANID;   // BAN src PAN ID
+    m_repoQuery->mode = m_repoQueryPayload.mode;        // type of request: MODE_CHANNEL_MASK etc.
+    if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)
+      post forwardRepoQueryMsgTask();
+    else
+      call Leds.led1Toggle();
   }
 
   task void sendDataTask()
@@ -173,8 +220,7 @@ implementation {
       if (call SendSweepData.send(AM_BROADCAST_ADDR, m_currentSweepMsgPtr, sizeof(cb_sweep_data_msg_t)) != SUCCESS) {
         if (call Queue.enqueue(m_currentSweepMsgPtr) != SUCCESS)
           call Leds.led0On();
-      } else 
-        call Leds.led2Toggle();
+      }
       setNextSweepDataMsg();
       findex = 0;
     }
@@ -192,6 +238,7 @@ implementation {
   event message_t* ReceiveChannelMask.receive(message_t* bufPtr, 
         void* payload, uint8_t len) 
   {
+    // received channel mask reply over serial line
     header_154_t *header = (header_154_t*) &m_channelMaskMpdu;
     uint8_t *amid = (uint8_t*) (((uint8_t*) header));
     cb_channelmask_msg_t *channelmask_msg = (cb_channelmask_msg_t*) (((uint8_t*) header)+1);
@@ -215,7 +262,6 @@ implementation {
     // which notices that m_isChannelMaskMsgReady is TRUE
 
     return bufPtr;
-
   }
 
   async event void CC2420Tx.loadTXFIFODone(uint8_t *data, error_t error ) {
@@ -229,7 +275,7 @@ implementation {
     call CC2420Power.rxOn(); 
     if (error == SUCCESS)
       call Leds.led1Toggle();
-    call Alarm.startAt(tlast, SAMPLING_PERIOD); // continue with noise sampling
+    call Alarm.startAt(call Alarm.getNow(), SAMPLING_PERIOD); // continue with noise sampling
   }
 
   event void CC2420Tx.cancelDone(error_t error) {}
@@ -257,7 +303,7 @@ implementation {
   {
     if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)
       post sendRepoQueryTask();
-    call UserButton.enable();
+/*    call UserButton.enable();*/
   }
 
   event void SendRepoQuery.sendDone(message_t* bufPtr, error_t error) {}

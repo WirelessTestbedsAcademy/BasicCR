@@ -595,7 +595,7 @@ implementation {
   void writeMdmctrl0() {
     atomic {
       call MDMCTRL0.write( ( 0 << CC2420_MDMCTRL0_RESERVED_FRAME_MODE ) |
-          ( 1 << CC2420_MDMCTRL0_PAN_COORDINATOR ) | 
+          ( 0 << CC2420_MDMCTRL0_PAN_COORDINATOR ) | 
           ( 1 << CC2420_MDMCTRL0_ADR_DECODE ) |
           ( 2 << CC2420_MDMCTRL0_CCA_HYST ) |
           ( 2 << CC2420_MDMCTRL0_CCA_MOD ) | // CCA=1 when not receiving valid IEEE 802.15.4 data, CCA=0 otherwise

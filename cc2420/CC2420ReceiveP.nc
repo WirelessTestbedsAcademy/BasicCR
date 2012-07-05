@@ -58,7 +58,6 @@ module CC2420ReceiveP {
   uses interface CC2420Strobe as SRXON;
   uses interface CC2420Strobe as SRFOFF;
   uses interface CC2420Register as MDMCTRL1;
-  uses interface CC2420Ram as TXFIFO_RAM;
 /*  uses interface CC2420Packet;*/
 /*  uses interface CC2420PacketBody;*/
   uses interface CC2420Config;
@@ -134,7 +133,8 @@ implementation {
   void receive();
   void waitForNextPacket();
   void flush();
-  void reversePhaseModulation();
+  void switchToUnbufferedMode();
+  void switchToBufferedMode();
   void startingSpiReserved();
   void continueStart();
   void continueStop();
@@ -211,12 +211,9 @@ implementation {
     atomic {
       reset_state();
       m_state = S_STARTED;
-      // switching CC2420 to a mode where we don't receive any data
-      // (but only use it for noise sampling) 
-      reversePhaseModulation();
-      call InterruptFIFOP.disable(); 
     }
     call SpiResource.release();
+    call InterruptFIFOP.enableFallingEdge();
     signal AsyncSplitControl.startDone(SUCCESS);
   }
 
@@ -258,19 +255,25 @@ implementation {
     signal AsyncSplitControl.stopDone(SUCCESS);
   }
 
-  /* MODULATION_MODE flag in MDMCTRL1 register is set to 1 
-   * => "Reversed phase, non-IEEE compliant (could be used 
-   * to set up a system which will not receive 802.15.4 packets)"
-   * */
-  void reversePhaseModulation()
+  void switchToUnbufferedMode()
   {
     uint16_t mdmctrol1;
     call CSN.set();
     call CSN.clr();
     call MDMCTRL1.read(&mdmctrol1);
+    mdmctrol1 &= ~0x03;
+    mdmctrol1 |= 0x01;
+    call MDMCTRL1.write(mdmctrol1);
     call CSN.set();
-    mdmctrol1 |= 0x0010;
+  }
+
+  void switchToBufferedMode()
+  {
+    uint16_t mdmctrol1;
+    call CSN.set();
     call CSN.clr();
+    call MDMCTRL1.read(&mdmctrol1);
+    mdmctrol1 &= ~0x03;
     call MDMCTRL1.write(mdmctrol1);
     call CSN.set();
   }
@@ -324,10 +327,18 @@ implementation {
   async command bool CC2420Rx.isReceiving() {
     return (receivingPacket || !call FIFOP.get());
   }  
-
   /***************** InterruptFIFOP Events ****************/
   async event void InterruptFIFOP.fired() {
-    call Leds.led0On(); // must never happen!
+    atomic {
+      if ( m_state == S_STARTED ) {
+        if (m_timestampState == TS_IDLE)
+          m_timestampState = TS_INVALID;
+        beginReceive();
+
+      } else {
+        m_missed_packets++;
+      }
+    }
   }
   
   
@@ -376,7 +387,6 @@ implementation {
    * We received some bytes from the SPI bus.  Process them in the context
    * of the state we're in.  Remember the length byte is not part of the length
    */
-  uint8_t tmpBuffer[130];
   async event void RXFIFO.readDone( uint8_t* rx_buf, uint8_t rx_len,
                                     error_t error ) {
     //cc2420_header_t* header = call CC2420PacketBody.getHeader( m_p_rx_buf );
@@ -593,5 +603,4 @@ implementation {
     m_timestampState = TS_IDLE;
   }
 
-  default async event bool CC2420Rx.receive( uint8_t *data, uint16_t time, bool isTimeValid ){return FALSE;}
 }

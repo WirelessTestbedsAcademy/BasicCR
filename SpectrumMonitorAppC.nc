@@ -37,6 +37,7 @@ implementation {
 
   components CC2420ReceiveC;
   App.RxControl -> CC2420ReceiveC;  
+  App.CC2420Rx -> CC2420ReceiveC;      
 
   components new Alarm32khz32C();
   MainC.SoftwareInit -> Alarm32khz32C;
