@@ -39,7 +39,7 @@ implementation {
   norace bool m_ctrlChannelListen;
 
   norace bool m_isChannelMaskMsgReady;
-  norace uint8_t m_channelMaskMpdu[sizeof(header_154_t) + 1 + sizeof(cb_channelmask_msg_t) + 2]; // extra 1 for AM ID, extra 2 for MAC CRC
+  norace uint8_t m_channelMaskMpdu[sizeof(header_154_t) - 1 + sizeof(cb_channelmask_msg_t) + 2]; // extra 2 for MAC CRC
 
   message_t m_repoQueryMsg;
   cb_repo_query_msg_t *m_repoQuery;
@@ -172,6 +172,7 @@ implementation {
 
       if (m_isChannelMaskMsgReady) { // send a packet now!
         call CC2420Power.rfOff();
+        call CC2420Power.setFrequency(CONTROL_CHANNEL_FREQUENCY);
         call SpiResource.release(); 
         if (call CC2420Tx.loadTXFIFO(m_channelMaskMpdu) != SUCCESS) {
           call Leds.led0On();
@@ -206,7 +207,7 @@ implementation {
     if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)
       post forwardRepoQueryMsgTask();
     else
-      call Leds.led1Toggle();
+      call Leds.led0Toggle();
   }
 
   task void sendDataTask()
@@ -240,8 +241,7 @@ implementation {
   {
     // received channel mask reply over serial line
     header_154_t *header = (header_154_t*) &m_channelMaskMpdu;
-    uint8_t *amid = (uint8_t*) (((uint8_t*) header));
-    cb_channelmask_msg_t *channelmask_msg = (cb_channelmask_msg_t*) (((uint8_t*) header)+1);
+    uint8_t *msdu = (uint8_t *) header + sizeof(header_154_t);
 
     if (len != sizeof(cb_channelmask_msg_t) || m_isChannelMaskMsgReady) {
       call Leds.led0On();
@@ -249,14 +249,13 @@ implementation {
     }
     m_isChannelMaskMsgReady = TRUE;
 
-    header->length = sizeof(m_channelMaskMpdu) - 1;
+    header->length = sizeof(m_channelMaskMpdu);
     header->fcf = FRAME_TYPE_DATA | (DEST_MODE_SHORT << 8);
     header->dsn = 0;
     header->destpan = BROADCAST_ADDRESS;
     header->dest = BROADCAST_ADDRESS;
 
-    *amid = AM_CB_CHANNELMASK_MSG;
-    memcpy(channelmask_msg, payload, len);
+    memcpy(msdu, payload, len);
 
     // message will be sent from Alarm eventhandler above, 
     // which notices that m_isChannelMaskMsgReady is TRUE

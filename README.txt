@@ -13,12 +13,8 @@ sampling period is 1/16 sec and the bandwidth (IEEE 802.15.4 channel width) is
 2 MHz (fixed). This app is only available for the TelosB (Tmote Sky) platform.
 During operation, LED 2 (blue) should toggle periodically. 
 
-For testing purposes install the ../../BAN/querytest on another node to send a
-message (cb_repo_query_msg_t / CBRepoQueryMsg.py) over the radio every time the
-user button on the sensor node is pressed.  Upon reception of this message the
-SpectrumMonitorApp will forward the message over the serial line.  Every time
-the SpectrumMonitorApp receives such a message it will also toggle its blue LED
-and green LED (green LED denotes successful sending over serial line).
+Whenever the app receives any message from the serial line, it broadcasts this
+message out over the radio (and toggles it's green LED).
 
 The RED LED should never turn on, it indicates an error. 
 
