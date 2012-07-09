@@ -204,10 +204,10 @@ implementation {
     m_repoQuery->srcID = m_repoQueryPayload.srcID;      // BAN src ID
     m_repoQuery->srcPANID = m_repoQueryPayload.srcPANID;   // BAN src PAN ID
     m_repoQuery->mode = m_repoQueryPayload.mode;        // type of request: MODE_CHANNEL_MASK etc.
-    if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)
+    if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS) {
       post forwardRepoQueryMsgTask();
-    else
       call Leds.led0Toggle();
+    }
   }
 
   task void sendDataTask()
