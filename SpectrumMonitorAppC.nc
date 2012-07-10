@@ -2,6 +2,7 @@
 #if !defined(PLATFORM_TELOSB)
 #error MUST BE TELOSB PLATFORM!
 #endif
+#include "printf.h"
 
 #include "spectrummonitor.h"
 
@@ -9,6 +10,8 @@ configuration SpectrumMonitorAppC{
 }
 implementation {
   components MainC, new SpectrumMonitorC(MODE_MAX) as App, LedsC;
+  components PrintfC;
+  components SerialStartC;
 
   App.Boot -> MainC;
   App.Leds -> LedsC;

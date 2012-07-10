@@ -140,20 +140,29 @@ implementation {
           m_currentSweep->errorcode |= OVERFLOW2_ERROR;
         }
 
-        rssi = readRssiFast();
+        call CC2420Power.rfOff();
+        call CC2420Power.setFrequency(fvector[findex]);
+        call CC2420Power.rxOn();
+        start = call Alarm.getNow();
+        while (call Alarm.getNow() < start+15)
+          nop();
+
+        rssi = readRssiFast() - 45;
         while (call Alarm.getNow() < start + DWELL_TIME)
         {
-          tmp = readRssiFast();
+          tmp = readRssiFast()-45;
           switch (DWELL_MODE)
           {
             case MODE_MAX: if (tmp > rssi) rssi = tmp; break;
             case MODE_MIN: if (tmp < rssi) rssi = tmp; break;
           }
         }
-        m_currentSweep->rssi[findex] = rssi - 45;
+/*        printf("%d ",rssi);*/
+        m_currentSweep->rssi[findex] = rssi;
 
         if (findex == NUM_FREQUENCIES-1) {
           // finished a sweep: send result over serial and, for a while, tune into control channel
+/*          printf("\n");*/
           post sendDataTask();
           call CC2420Power.rfOff();
           call CC2420Power.setFrequency(CONTROL_CHANNEL_FREQUENCY);
@@ -163,10 +172,11 @@ implementation {
           call Alarm.start(CONTROL_CHANNEL_LISTEN_TIME);
           return;
         } else {
-          call CC2420Power.rfOff();
-          call CC2420Power.flushRxFifo();
-          call CC2420Power.setFrequency(fvector[findex++]);
-          call CC2420Power.rxOn();
+          findex = findex + 1;
+/*          call CC2420Power.rfOff();*/
+/*          call CC2420Power.flushRxFifo();*/
+/*          call CC2420Power.setFrequency(fvector[findex++]);*/
+/*          call CC2420Power.rxOn();*/
         }
       }
 
