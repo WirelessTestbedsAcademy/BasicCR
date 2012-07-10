@@ -61,10 +61,11 @@ enum {
 };
 
 typedef nx_struct cb_repo_query_msg {
-  nx_uint8_t forwarder;   // TWIST node ID
-  nx_uint16_t srcID;      // BAN src ID
-  nx_uint16_t srcPANID;   // BAN src PAN ID
-  nx_uint8_t mode;        // type of request: MODE_CHANNEL_MASK etc.
+  nx_uint8_t forwarderID;     // TWIST node ID
+  nx_uint8_t forwarderRSSI;   // the RSSI measured on the forwarder while it received the query message
+  nx_uint16_t srcID;          // BAN src ID
+  nx_uint16_t srcPANID;       // BAN src PAN ID
+  nx_uint8_t mode;            // type of request: MODE_CHANNEL_MASK etc.
 } cb_repo_query_msg_t;
 
 typedef nx_struct cb_channelmask_msg {

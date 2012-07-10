@@ -9,46 +9,56 @@
 
 enum {
   /** The default size of this message type in bytes. */
-  CB_REPO_QUERY_MSG_SIZE = 6,
+  CB_REPO_QUERY_MSG_SIZE = 7,
 
   /** The Active Message type associated with this message. */
   CB_REPO_QUERY_MSG_AM_TYPE = 177,
 
-  /* Field forwarder: type uint8_t, offset (bits) 0, size (bits) 8 */
-  /** Offset (in bytes) of the field 'forwarder' */
-  CB_REPO_QUERY_MSG_FORWARDER_OFFSET = 0,
-  /** Offset (in bits) of the field 'forwarder' */
-  CB_REPO_QUERY_MSG_FORWARDER_OFFSETBITS = 0,
-  /** Size (in bytes) of the field 'forwarder' */
-  CB_REPO_QUERY_MSG_FORWARDER_SIZE = 1,
-  /** Size (in bits) of the field 'forwarder' */
-  CB_REPO_QUERY_MSG_FORWARDER_SIZEBITS = 8,
+  /* Field forwarderID: type uint8_t, offset (bits) 0, size (bits) 8 */
+  /** Offset (in bytes) of the field 'forwarderID' */
+  CB_REPO_QUERY_MSG_FORWARDERID_OFFSET = 0,
+  /** Offset (in bits) of the field 'forwarderID' */
+  CB_REPO_QUERY_MSG_FORWARDERID_OFFSETBITS = 0,
+  /** Size (in bytes) of the field 'forwarderID' */
+  CB_REPO_QUERY_MSG_FORWARDERID_SIZE = 1,
+  /** Size (in bits) of the field 'forwarderID' */
+  CB_REPO_QUERY_MSG_FORWARDERID_SIZEBITS = 8,
 
-  /* Field srcID: type uint16_t, offset (bits) 8, size (bits) 16 */
+  /* Field forwarderRSSI: type uint8_t, offset (bits) 8, size (bits) 8 */
+  /** Offset (in bytes) of the field 'forwarderRSSI' */
+  CB_REPO_QUERY_MSG_FORWARDERRSSI_OFFSET = 1,
+  /** Offset (in bits) of the field 'forwarderRSSI' */
+  CB_REPO_QUERY_MSG_FORWARDERRSSI_OFFSETBITS = 8,
+  /** Size (in bytes) of the field 'forwarderRSSI' */
+  CB_REPO_QUERY_MSG_FORWARDERRSSI_SIZE = 1,
+  /** Size (in bits) of the field 'forwarderRSSI' */
+  CB_REPO_QUERY_MSG_FORWARDERRSSI_SIZEBITS = 8,
+
+  /* Field srcID: type uint16_t, offset (bits) 16, size (bits) 16 */
   /** Offset (in bytes) of the field 'srcID' */
-  CB_REPO_QUERY_MSG_SRCID_OFFSET = 1,
+  CB_REPO_QUERY_MSG_SRCID_OFFSET = 2,
   /** Offset (in bits) of the field 'srcID' */
-  CB_REPO_QUERY_MSG_SRCID_OFFSETBITS = 8,
+  CB_REPO_QUERY_MSG_SRCID_OFFSETBITS = 16,
   /** Size (in bytes) of the field 'srcID' */
   CB_REPO_QUERY_MSG_SRCID_SIZE = 2,
   /** Size (in bits) of the field 'srcID' */
   CB_REPO_QUERY_MSG_SRCID_SIZEBITS = 16,
 
-  /* Field srcPANID: type uint16_t, offset (bits) 24, size (bits) 16 */
+  /* Field srcPANID: type uint16_t, offset (bits) 32, size (bits) 16 */
   /** Offset (in bytes) of the field 'srcPANID' */
-  CB_REPO_QUERY_MSG_SRCPANID_OFFSET = 3,
+  CB_REPO_QUERY_MSG_SRCPANID_OFFSET = 4,
   /** Offset (in bits) of the field 'srcPANID' */
-  CB_REPO_QUERY_MSG_SRCPANID_OFFSETBITS = 24,
+  CB_REPO_QUERY_MSG_SRCPANID_OFFSETBITS = 32,
   /** Size (in bytes) of the field 'srcPANID' */
   CB_REPO_QUERY_MSG_SRCPANID_SIZE = 2,
   /** Size (in bits) of the field 'srcPANID' */
   CB_REPO_QUERY_MSG_SRCPANID_SIZEBITS = 16,
 
-  /* Field mode: type uint8_t, offset (bits) 40, size (bits) 8 */
+  /* Field mode: type uint8_t, offset (bits) 48, size (bits) 8 */
   /** Offset (in bytes) of the field 'mode' */
-  CB_REPO_QUERY_MSG_MODE_OFFSET = 5,
+  CB_REPO_QUERY_MSG_MODE_OFFSET = 6,
   /** Offset (in bits) of the field 'mode' */
-  CB_REPO_QUERY_MSG_MODE_OFFSETBITS = 40,
+  CB_REPO_QUERY_MSG_MODE_OFFSETBITS = 48,
   /** Size (in bytes) of the field 'mode' */
   CB_REPO_QUERY_MSG_MODE_SIZE = 1,
   /** Size (in bits) of the field 'mode' */
@@ -56,14 +66,24 @@ enum {
 };
 
 /**
- * Return the value of the field 'forwarder'
+ * Return the value of the field 'forwarderID'
  */
-uint8_t cb_repo_query_msg_forwarder_get(tmsg_t *msg);
+uint8_t cb_repo_query_msg_forwarderID_get(tmsg_t *msg);
 
 /**
- * Set the value of the field 'forwarder'
+ * Set the value of the field 'forwarderID'
  */
-void cb_repo_query_msg_forwarder_set(tmsg_t *msg, uint8_t value);
+void cb_repo_query_msg_forwarderID_set(tmsg_t *msg, uint8_t value);
+
+/**
+ * Return the value of the field 'forwarderRSSI'
+ */
+uint8_t cb_repo_query_msg_forwarderRSSI_get(tmsg_t *msg);
+
+/**
+ * Set the value of the field 'forwarderRSSI'
+ */
+void cb_repo_query_msg_forwarderRSSI_set(tmsg_t *msg, uint8_t value);
 
 /**
  * Return the value of the field 'srcID'

@@ -7,43 +7,53 @@
 #include <message.h>
 #include "CBRepoQueryMsg.h"
 
-uint8_t cb_repo_query_msg_forwarder_get(tmsg_t *msg)
+uint8_t cb_repo_query_msg_forwarderID_get(tmsg_t *msg)
 {
   return tmsg_read_ube(msg, 0, 8);
 }
 
-void cb_repo_query_msg_forwarder_set(tmsg_t *msg, uint8_t value)
+void cb_repo_query_msg_forwarderID_set(tmsg_t *msg, uint8_t value)
 {
   tmsg_write_ube(msg, 0, 8, value);
 }
 
+uint8_t cb_repo_query_msg_forwarderRSSI_get(tmsg_t *msg)
+{
+  return tmsg_read_ube(msg, 8, 8);
+}
+
+void cb_repo_query_msg_forwarderRSSI_set(tmsg_t *msg, uint8_t value)
+{
+  tmsg_write_ube(msg, 8, 8, value);
+}
+
 uint16_t cb_repo_query_msg_srcID_get(tmsg_t *msg)
 {
-  return tmsg_read_ube(msg, 8, 16);
+  return tmsg_read_ube(msg, 16, 16);
 }
 
 void cb_repo_query_msg_srcID_set(tmsg_t *msg, uint16_t value)
 {
-  tmsg_write_ube(msg, 8, 16, value);
+  tmsg_write_ube(msg, 16, 16, value);
 }
 
 uint16_t cb_repo_query_msg_srcPANID_get(tmsg_t *msg)
 {
-  return tmsg_read_ube(msg, 24, 16);
+  return tmsg_read_ube(msg, 32, 16);
 }
 
 void cb_repo_query_msg_srcPANID_set(tmsg_t *msg, uint16_t value)
 {
-  tmsg_write_ube(msg, 24, 16, value);
+  tmsg_write_ube(msg, 32, 16, value);
 }
 
 uint8_t cb_repo_query_msg_mode_get(tmsg_t *msg)
 {
-  return tmsg_read_ube(msg, 40, 8);
+  return tmsg_read_ube(msg, 48, 8);
 }
 
 void cb_repo_query_msg_mode_set(tmsg_t *msg, uint8_t value)
 {
-  tmsg_write_ube(msg, 40, 8, value);
+  tmsg_write_ube(msg, 48, 8, value);
 }
 

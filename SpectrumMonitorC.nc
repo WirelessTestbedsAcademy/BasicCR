@@ -184,14 +184,15 @@ implementation {
     }
   }
 
-  cb_repo_query_msg_t m_repoQueryPayload;
-  async event bool CC2420Rx.receive(uint8_t *data, uint16_t time, bool isTimeValid)
+  norace cb_repo_query_msg_t m_repoQueryPayload;
+  async event bool CC2420Rx.receive(uint8_t *data, uint16_t time, bool isTimeValid, int8_t rssi)
   {
     // reveived a message over the radio
     uint16_t len = data[0];
     call Leds.led2Toggle();
     if (len == 13 + sizeof(cb_repo_query_msg_t)) { // 13 is the MAC overhead for our frames
       memcpy(&m_repoQueryPayload, &data[12], sizeof(cb_repo_query_msg_t));
+      m_repoQueryPayload.forwarderRSSI = rssi;
       post forwardRepoQueryMsgTask();
     }
     return FALSE;
@@ -200,7 +201,8 @@ implementation {
   task void forwardRepoQueryMsgTask()
   {
     // fake a cb_repo_query_msg_t
-    m_repoQuery->forwarder = m_repoQueryPayload.forwarder;   // TWIST node ID
+    m_repoQuery->forwarderID = m_repoQueryPayload.forwarderID;   // TWIST node ID
+    m_repoQuery->forwarderRSSI = m_repoQueryPayload.forwarderRSSI;   // TWIST node ID
     m_repoQuery->srcID = m_repoQueryPayload.srcID;      // BAN src ID
     m_repoQuery->srcPANID = m_repoQueryPayload.srcPANID;   // BAN src PAN ID
     m_repoQuery->mode = m_repoQueryPayload.mode;        // type of request: MODE_CHANNEL_MASK etc.
@@ -289,7 +291,7 @@ implementation {
      if (val == BUTTON_PRESSED) {
        // fake a cb_repo_query_msg_t
        call UserButton.disable();
-       m_repoQuery->forwarder = TOS_NODE_ID;   // TWIST node ID
+       m_repoQuery->forwarderID = TOS_NODE_ID;   // TWIST node ID
        m_repoQuery->srcID = 17;      // BAN src ID
        m_repoQuery->srcPANID = 1234;   // BAN src PAN ID
        m_repoQuery->mode = 1;        // type of request: MODE_CHANNEL_MASK etc.

@@ -448,7 +448,7 @@ implementation {
     
     case S_RX_PAYLOAD:
       call CSN.set();
-      if (signal CC2420Rx.receive(m_rxBuf, m_timestamp, m_timestampState == TS_LOADED)){
+      if (signal CC2420Rx.receive(m_rxBuf, m_timestamp, m_timestampState == TS_LOADED, ((int8_t) m_rxBuf[rxFrameLength])-45)){
         call CSN.clr();
         call SRFOFF.strobe();
         call CSN.set();      

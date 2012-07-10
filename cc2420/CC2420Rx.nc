@@ -32,7 +32,7 @@
 interface CC2420Rx {
   async command bool isReceiving();
   // @return if TRUE then the RF is turned off, otherwise it is left in Rx
-  async event bool receive( uint8_t *data, uint16_t time, bool isTimeValid );
+  async event bool receive( uint8_t *data, uint16_t time, bool isTimeValid, int8_t rssi );
 
 }
 
