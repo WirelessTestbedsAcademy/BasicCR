@@ -22,6 +22,9 @@ class MyClass:
     # Called by the MoteIF's receive thread when a new message
     # is received
     def receive(self, src, msg):
+      if msg.get_amType() == CBSweepDataMsg.get_amType():
+        print "RF noise: " + str(msg.get_rssi())
+      else:
         print "Received message: "+ str(msg)
 
 if __name__ == "__main__":

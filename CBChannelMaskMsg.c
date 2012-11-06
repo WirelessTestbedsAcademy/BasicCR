@@ -7,13 +7,23 @@
 #include <message.h>
 #include "CBChannelMaskMsg.h"
 
+uint8_t cb_channelmask_msg_type_get(tmsg_t *msg)
+{
+  return tmsg_read_ube(msg, 0, 8);
+}
+
+void cb_channelmask_msg_type_set(tmsg_t *msg, uint8_t value)
+{
+  tmsg_write_ube(msg, 0, 8, value);
+}
+
 uint16_t cb_channelmask_msg_data_get(tmsg_t *msg)
 {
-  return tmsg_read_ube(msg, 0, 16);
+  return tmsg_read_ube(msg, 8, 16);
 }
 
 void cb_channelmask_msg_data_set(tmsg_t *msg, uint16_t value)
 {
-  tmsg_write_ube(msg, 0, 16, value);
+  tmsg_write_ube(msg, 8, 16, value);
 }
 

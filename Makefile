@@ -1,7 +1,7 @@
 COMPONENT=SpectrumMonitorAppC
 CFLAGS += -I$(TOSDIR)/lib/printf
 CFLAGS += -DNEW_PRINTF_SEMANTICS
-CFLAGS +=  -I./cc2420/ -pthread
+CFLAGS +=  -I./cc2420/ -pthread -I../../BAN/app/
 PYTHON_MSG_FILES = CBSweepDataMsg.py CBChannelMaskMsg.py CBRepoQueryMsg.py
 C_MSG_HEADER_FILES = CBSweepDataMsg.h CBChannelMaskMsg.h CBRepoQueryMsg.h
 C_TEST_PROGRAM = test

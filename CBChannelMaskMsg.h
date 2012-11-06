@@ -9,21 +9,41 @@
 
 enum {
   /** The default size of this message type in bytes. */
-  CB_CHANNELMASK_MSG_SIZE = 2,
+  CB_CHANNELMASK_MSG_SIZE = 3,
 
   /** The Active Message type associated with this message. */
   CB_CHANNELMASK_MSG_AM_TYPE = 178,
 
-  /* Field data: type uint16_t, offset (bits) 0, size (bits) 16 */
+  /* Field type: type uint8_t, offset (bits) 0, size (bits) 8 */
+  /** Offset (in bytes) of the field 'type' */
+  CB_CHANNELMASK_MSG_TYPE_OFFSET = 0,
+  /** Offset (in bits) of the field 'type' */
+  CB_CHANNELMASK_MSG_TYPE_OFFSETBITS = 0,
+  /** Size (in bytes) of the field 'type' */
+  CB_CHANNELMASK_MSG_TYPE_SIZE = 1,
+  /** Size (in bits) of the field 'type' */
+  CB_CHANNELMASK_MSG_TYPE_SIZEBITS = 8,
+
+  /* Field data: type uint16_t, offset (bits) 8, size (bits) 16 */
   /** Offset (in bytes) of the field 'data' */
-  CB_CHANNELMASK_MSG_DATA_OFFSET = 0,
+  CB_CHANNELMASK_MSG_DATA_OFFSET = 1,
   /** Offset (in bits) of the field 'data' */
-  CB_CHANNELMASK_MSG_DATA_OFFSETBITS = 0,
+  CB_CHANNELMASK_MSG_DATA_OFFSETBITS = 8,
   /** Size (in bytes) of the field 'data' */
   CB_CHANNELMASK_MSG_DATA_SIZE = 2,
   /** Size (in bits) of the field 'data' */
   CB_CHANNELMASK_MSG_DATA_SIZEBITS = 16,
 };
+
+/**
+ * Return the value of the field 'type'
+ */
+uint8_t cb_channelmask_msg_type_get(tmsg_t *msg);
+
+/**
+ * Set the value of the field 'type'
+ */
+void cb_channelmask_msg_type_set(tmsg_t *msg, uint8_t value);
 
 /**
  * Return the value of the field 'data'

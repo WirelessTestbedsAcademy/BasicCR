@@ -135,7 +135,7 @@ implementation {
 /*    m_short_addr = call ActiveMessageAddress.amAddress();*/
 
 /*    m_pan = call ActiveMessageAddress.amGroup();*/
-    m_pan = 0x8182;
+    m_pan = BAN_PAN_ID;
     m_short_addr = 0x0070;
 /*    m_tx_power = CC2420_DEF_RFPOWER;*/
     m_channel = 11;
@@ -156,11 +156,12 @@ implementation {
 /*#if defined(CC2420_NO_ADDRESS_RECOGNITION)*/
 /*    addressRecognition = FALSE;*/
 /*#else*/
-    addressRecognition = TRUE;
+    addressRecognition = FALSE;
     //addressRecognition = FALSE;
 /*#endif*/
     acceptReservedFrames = FALSE;
     m_isPanCoord = FALSE;
+    call CC2420Config.setPromiscuousMode(TRUE);
 
     return SUCCESS;
   }

@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <UserButton.h>
 #include "message.h"
+#include "app_profile.h"
+
+//#define SPECTRUM_MONITOR_DEBUG 
 
 generic module SpectrumMonitorC(dwell_mode_t DWELL_MODE) {
   uses {
@@ -38,6 +41,10 @@ implementation {
   norace bool m_overflow2;
   norace bool m_ctrlChannelListen;
 
+  uint16_t ctrlChannels[] = CTRL_CHANNEL_FREQUENCY_VECTOR;
+  uint16_t ctrlChannelIndex;
+  uint16_t m_BANChannelIndex;
+
   norace bool m_isChannelMaskMsgReady;
   norace uint8_t m_channelMaskMpdu[sizeof(header_154_t) - 1 + sizeof(cb_channelmask_msg_t) + 2]; // extra 2 for MAC CRC
 
@@ -63,7 +70,7 @@ implementation {
 
   event void SerialControl.startDone(error_t err) 
   {
-/*    call UserButton.enable();*/
+    call UserButton.enable();
     call SpiResource.request();
   }
 
@@ -164,13 +171,19 @@ implementation {
           // finished a sweep: send result over serial and, for a while, tune into control channel
 /*          printf("\n");*/
           post sendDataTask();
-          call CC2420Power.rfOff();
-          call CC2420Power.setFrequency(CONTROL_CHANNEL_FREQUENCY);
-          call CC2420Power.rxOn();
-          call SpiResource.release();
-          m_ctrlChannelListen = TRUE;
-          call Alarm.start(CONTROL_CHANNEL_LISTEN_TIME);
-          return;
+
+          if (NUM_CTRL_CHANNELS) {
+            call CC2420Power.rfOff();
+            ctrlChannelIndex += 1;
+            if (ctrlChannelIndex >= NUM_CTRL_CHANNELS)
+              ctrlChannelIndex = 0;
+            call CC2420Power.setFrequency(ctrlChannels[ctrlChannelIndex]);
+            call CC2420Power.rxOn();
+            call SpiResource.release();
+            m_ctrlChannelListen = TRUE;
+            call Alarm.start(CONTROL_CHANNEL_LISTEN_TIME);
+            return;
+          }
         } else {
           findex = findex + 1;
 /*          call CC2420Power.rfOff();*/
@@ -182,7 +195,7 @@ implementation {
 
       if (m_isChannelMaskMsgReady) { // send a packet now!
         call CC2420Power.rfOff();
-        call CC2420Power.setFrequency(CONTROL_CHANNEL_FREQUENCY);
+        call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
         call SpiResource.release(); 
         if (call CC2420Tx.loadTXFIFO(m_channelMaskMpdu) != SUCCESS) {
           call Leds.led0On();
@@ -198,13 +211,29 @@ implementation {
   async event bool CC2420Rx.receive(uint8_t *data, uint16_t time, bool isTimeValid, int8_t rssi)
   {
     // reveived a message over the radio
+#if 0
     uint16_t len = data[0];
-    call Leds.led2Toggle();
-    if (len == 13 + sizeof(cb_repo_query_msg_t)) { // 13 is the MAC overhead for our frames
-      memcpy(&m_repoQueryPayload, &data[12], sizeof(cb_repo_query_msg_t));
+    beacon_payload_t *beaconPayload = (beacon_payload_t *) &data[len-sizeof(beacon_payload_t)-1];
+    if (data[1] == 0 && beaconPayload->type == AM_CB_BEACON_MSG && len == 13+sizeof(beacon_payload_t)) 
+    { // it's a beacon of correct size
+      call Leds.led2Toggle();
+      m_BANChannelIndex = ctrlChannelIndex; // THIS DOESN'T WORK (channel is always set to 11)
+      m_repoQueryPayload.srcID = *((nx_uint16_t*) &data[6]);
+      m_repoQueryPayload.srcPANID = *((nx_uint16_t*) &data[4]);
       m_repoQueryPayload.forwarderRSSI = rssi;
       post forwardRepoQueryMsgTask();
     }
+#endif
+
+#ifdef SPECTRUM_MONITOR_DEBUG
+    atomic {
+      cb_channelmask_msg_t mask;
+      mask.type = AM_CB_CHANNELMASK_MSG;
+      if (m_BANChannelIndex == 0) mask.data = 2; else mask.data = 1; // toggle between channel 11 and 12
+      signal ReceiveChannelMask.receive(0,&mask,sizeof(cb_channelmask_msg_t));
+    }
+#endif   
+
     return FALSE;
   }
 
@@ -218,7 +247,6 @@ implementation {
     m_repoQuery->mode = m_repoQueryPayload.mode;        // type of request: MODE_CHANNEL_MASK etc.
     if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS) {
       post forwardRepoQueryMsgTask();
-      call Leds.led0Toggle();
     }
   }
 
@@ -253,9 +281,10 @@ implementation {
   {
     // received channel mask reply over serial line
     header_154_t *header = (header_154_t*) &m_channelMaskMpdu;
-    uint8_t *msdu = (uint8_t *) header + sizeof(header_154_t);
+    cb_channelmask_msg_t *maskRadio = (cb_channelmask_msg_t*) ((uint8_t *) header + sizeof(header_154_t));
 
-    if (len != sizeof(cb_channelmask_msg_t) || m_isChannelMaskMsgReady) {
+/*    if (len != sizeof(cb_channelmask_msg_t) || m_isChannelMaskMsgReady) {*/
+    if (m_isChannelMaskMsgReady) {
       call Leds.led0On();
       return bufPtr;
     }
@@ -267,7 +296,11 @@ implementation {
     header->destpan = BROADCAST_ADDRESS;
     header->dest = BROADCAST_ADDRESS;
 
-    memcpy(msdu, payload, len);
+    if (len == 2) // old version
+      maskRadio->data = *((nx_uint16_t*) payload);
+    else
+      memcpy(maskRadio, payload, len);
+    maskRadio->type = AM_CB_CHANNELMASK_MSG;
 
     // message will be sent from Alarm eventhandler above, 
     // which notices that m_isChannelMaskMsgReady is TRUE
@@ -299,14 +332,19 @@ implementation {
   event void UserButton.notify(button_state_t val)
   {
      if (val == BUTTON_PRESSED) {
+       cb_channelmask_msg_t mask;
+       mask.type = AM_CB_CHANNELMASK_MSG;
+       mask.data = 0x0002; 
        // fake a cb_repo_query_msg_t
-       call UserButton.disable();
-       m_repoQuery->forwarderID = TOS_NODE_ID;   // TWIST node ID
-       m_repoQuery->srcID = 17;      // BAN src ID
-       m_repoQuery->srcPANID = 1234;   // BAN src PAN ID
-       m_repoQuery->mode = 1;        // type of request: MODE_CHANNEL_MASK etc.
-       if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)
-         post sendRepoQueryTask();
+/*       call UserButton.disable();*/
+/*       m_repoQuery->forwarderID = TOS_NODE_ID;   // TWIST node ID*/
+/*       m_repoQuery->srcID = 17;      // BAN src ID*/
+/*       m_repoQuery->srcPANID = 1234;   // BAN src PAN ID*/
+/*       m_repoQuery->mode = 1;        // type of request: MODE_CHANNEL_MASK etc.*/
+/*       if (call SendRepoQuery.send(AM_BROADCAST_ADDR, &m_repoQueryMsg, sizeof(cb_repo_query_msg_t)) != SUCCESS)*/
+/*         post sendRepoQueryTask();*/
+       signal ReceiveChannelMask.receive(0,&mask,sizeof(cb_channelmask_msg_t));
+       m_isChannelMaskMsgReady = TRUE;
      }
   }
 
