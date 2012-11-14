@@ -10,8 +10,8 @@
 // There can be a list of control channels: we round-robin listen
 // on the control channels for beacons from a BAN (after each sweep 
 // we tune to a new channel)
-#define CTRL_CHANNEL_FREQUENCY_VECTOR {}
-//#define CTRL_CHANNEL_FREQUENCY_VECTOR {2405, 2480}
+//#define CTRL_CHANNEL_FREQUENCY_VECTOR {}
+#define CTRL_CHANNEL_FREQUENCY_VECTOR {2405, 2410, 2415, 2420, 2425, 2430, 2435, 2440, 2445, 2450, 2455, 2460, 2465, 2470, 2475, 2480}
 
 
 uint16_t dummy_[] = FREQUENCY_VECTOR;
@@ -27,9 +27,9 @@ typedef enum {
 
 enum {
 //  CONTROL_CHANNEL_FREQUENCY = 2480, // 2480=channel 26
-  CONTROL_CHANNEL_LISTEN_TIME = 32000, // after every sweep we listen CONTROL_CHANNEL_LISTEN_TIME 32khz ticks on the control channel
+  CONTROL_CHANNEL_LISTEN_TIME = 17000, // after every sweep we listen CONTROL_CHANNEL_LISTEN_TIME 32khz ticks on the control channel
 
-  SAMPLING_PERIOD = (32768U/NUM_FREQUENCIES), // ticks of ACLK, which runs at 32768 Hz, use values below 64 at your own risk!
+  SAMPLING_PERIOD = (5000/NUM_FREQUENCIES), // ticks of ACLK, which runs at 32768 Hz, use values below 64 at your own risk!
   DWELL_TIME = 327, // the time we sample a given frequency, in ticks of which runs at 32768 Hz. MUST be smaller than SAMPLING_PERIOD! (set to zero if you only want a single sample)
   MSG_QUEUE_SIZE = 10,
 

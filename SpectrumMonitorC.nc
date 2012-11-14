@@ -35,6 +35,7 @@ implementation {
 
   message_t *m_currentSweepMsgPtr;
   norace cb_sweep_data_msg_t *m_currentSweep;
+  norace int8_t m_last_sweep_rssi[NUM_FREQUENCIES];
   uint16_t fvector[] = FREQUENCY_VECTOR;
   norace uint16_t findex;
   norace uint32_t m_seqno;
@@ -58,8 +59,17 @@ implementation {
   task void sendRepoQueryTask();
   task void forwardRepoQueryMsgTask();
 
+# define WDTCONFIG ( WDTCNTCL | WDTSSEL  )
+
   event void Boot.booted() 
   {
+    uint16_t i;
+    WDTCTL = WDTPW | WDTCONFIG ;
+    call Leds.set(0xFF);
+    for (i=0; i<32767; i++)
+      nop();
+    call Leds.set(0);
+    for (i=0; i<32767; i++)
     setNextSweepDataMsg();
     findex = m_seqno = 0;
     m_repoQuery = (cb_repo_query_msg_t*) call SerialPacket.getPayload(&m_repoQueryMsg, sizeof(cb_repo_query_msg_t));
@@ -112,6 +122,7 @@ implementation {
     call CC2420Power.rxOn();
 
     call Alarm.start(SAMPLING_PERIOD);
+    WDTCTL = WDTPW | WDTCONFIG ; // kick the watchdog
   }
 
   async event void Alarm.fired()
@@ -120,7 +131,7 @@ implementation {
     int8_t rssi,tmp;
 
     atomic {
-      
+
       if (m_ctrlChannelListen) {
         if (call SpiResource.immediateRequest() != SUCCESS) {
           call Alarm.start(32); // spin
@@ -166,6 +177,8 @@ implementation {
         }
 /*        printf("%d ",rssi);*/
         m_currentSweep->rssi[findex] = rssi;
+        m_last_sweep_rssi[findex] = rssi;
+
 
         if (findex == NUM_FREQUENCIES-1) {
           // finished a sweep: send result over serial and, for a while, tune into control channel
@@ -195,6 +208,7 @@ implementation {
 
       if (m_isChannelMaskMsgReady) { // send a packet now!
         call CC2420Power.rfOff();
+        //call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
         call CC2420Power.setFrequency(ctrlChannels[m_BANChannelIndex]);
         call SpiResource.release(); 
         if (call CC2420Tx.loadTXFIFO(m_channelMaskMpdu) != SUCCESS) {
@@ -225,14 +239,23 @@ implementation {
     }
 #endif
 
-#ifdef SPECTRUM_MONITOR_DEBUG
     atomic {
+      uint16_t i,j;
+      int8_t rssiVal = 0;
+
       cb_channelmask_msg_t mask;
       mask.type = AM_CB_CHANNELMASK_MSG;
-      if (m_BANChannelIndex == 0) mask.data = 2; else mask.data = 1; // toggle between channel 11 and 12
+      m_BANChannelIndex = ctrlChannelIndex; 
+      //if (m_BANChannelIndex == 0) mask.data = 2; else mask.data = 1; // toggle between channel 11 and 12
+      j = 0;
+      for (i=0; i<sizeof(m_last_sweep_rssi); i++)
+        if (m_last_sweep_rssi[i] < rssiVal) {
+          rssiVal = m_last_sweep_rssi[i];
+          j = i;
+        }
+      mask.data = 1<<j;
       signal ReceiveChannelMask.receive(0,&mask,sizeof(cb_channelmask_msg_t));
     }
-#endif   
 
     return FALSE;
   }
@@ -261,7 +284,8 @@ implementation {
       if (call SendSweepData.send(AM_BROADCAST_ADDR, m_currentSweepMsgPtr, sizeof(cb_sweep_data_msg_t)) != SUCCESS) {
         if (call Queue.enqueue(m_currentSweepMsgPtr) != SUCCESS)
           call Leds.led0On();
-      }
+      } else
+        WDTCTL = WDTPW | WDTCONFIG ; // kick the watchdog
       setNextSweepDataMsg();
       findex = 0;
     }
@@ -355,7 +379,9 @@ implementation {
 /*    call UserButton.enable();*/
   }
 
-  event void SendRepoQuery.sendDone(message_t* bufPtr, error_t error) {}
+  event void SendRepoQuery.sendDone(message_t* bufPtr, error_t error) 
+  {
+  }
 
   inline int8_t readRssiFast()
   {
