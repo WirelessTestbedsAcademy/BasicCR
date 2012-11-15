@@ -69,7 +69,6 @@ implementation {
     for (i=0; i<32767; i++)
       nop();
     call Leds.set(0);
-    for (i=0; i<32767; i++)
     setNextSweepDataMsg();
     findex = m_seqno = 0;
     m_repoQuery = (cb_repo_query_msg_t*) call SerialPacket.getPayload(&m_repoQueryMsg, sizeof(cb_repo_query_msg_t));
