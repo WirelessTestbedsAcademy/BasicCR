@@ -71,10 +71,10 @@ module CC2420ControlP {
   uses interface CC2420Strobe as SRFOFF;
   uses interface CC2420Strobe as SXOSCOFF;
   uses interface CC2420Strobe as SXOSCON;
-  uses interface CC2420Strobe as SACK; 
+  uses interface CC2420Strobe as SACK;
   uses interface CC2420Strobe as SFLUSHRX;
   uses interface AMPacket;
-  
+
   uses interface Resource as SpiResource;
   uses interface Resource as SyncResource;
 
@@ -93,29 +93,29 @@ implementation {
   } cc2420_control_state_t;
 
   uint8_t m_channel;
-  
+
 /*  uint8_t m_tx_power;*/
-  
+
   uint16_t m_pan;
-  
+
   uint16_t m_short_addr;
-  
+
   bool m_sync_busy;
-  
+
   bool autoAckEnabled;
-  
+
   bool hwAutoAckDefault;
-  
+
   bool addressRecognition;
 
   bool acceptReservedFrames;
-  
+
   bool m_isPanCoord;
 
   bool m_autoCrcEnabled;
 
   norace cc2420_control_state_t m_state = S_VREG_STOPPED;
-  
+
   /***************** Prototypes ****************/
 
   void writeFsctrl();
@@ -124,13 +124,13 @@ implementation {
 
   task void sync();
   task void syncDone();
-    
+
   /***************** Init Commands ****************/
   command error_t Init.init() {
     call CSN.makeOutput();
     call RSTN.makeOutput();
     call VREN.makeOutput();
-    
+
     // initialize from PIB defaults
 /*    m_short_addr = call ActiveMessageAddress.amAddress();*/
 
@@ -139,7 +139,7 @@ implementation {
     m_short_addr = 0x0070;
 /*    m_tx_power = CC2420_DEF_RFPOWER;*/
     m_channel = 11;
-    
+
 /*#if defined(CC2420_NO_ACKNOWLEDGEMENTS)*/
 /*    autoAckEnabled = FALSE;*/
 /*#else*/
@@ -221,17 +221,17 @@ implementation {
       if ( m_state != S_VREG_STARTED ) {
         return FAIL;
       }
-        
+
       m_state = S_XOSC_STARTING;
-      call IOCFG1.write( CC2420_SFDMUX_XOSC16M_STABLE << 
+      call IOCFG1.write( CC2420_SFDMUX_XOSC16M_STABLE <<
                          CC2420_IOCFG1_CCAMUX );
-                         
+
       call InterruptCCA.enableRisingEdge();
       call SXOSCON.strobe();
-      
+
       call IOCFG0.write( ( 1 << CC2420_IOCFG0_FIFOP_POLARITY ) |
           ( 127 << CC2420_IOCFG0_FIFOP_THR ) );
-                         
+
       writeFsctrl();
       writeMdmctrl0();
 
@@ -241,7 +241,7 @@ implementation {
       call AGCTST1.read(&temp);
       call AGCTST1.write((temp + (1 << 8) + (1 << 13)));
 
-  
+
       call RXCTRL1.write( ( 1 << CC2420_RXCTRL1_RXBPF_LOCUR ) |
           ( 1 << CC2420_RXCTRL1_LOW_LOWGAIN ) |
           ( 1 << CC2420_RXCTRL1_HIGH_HGM ) |
@@ -279,7 +279,7 @@ implementation {
   }
 
   async command error_t CC2420Power.rfOff() {
-    atomic {  
+    atomic {
       if ( m_state != S_XOSC_STARTED ) {
         return FAIL;
       }
@@ -306,7 +306,7 @@ implementation {
     }
     return SUCCESS;
   }
-  
+
   async command error_t CC2420Power.setFrequency(uint16_t frequency){
     // note: base is "2048", so 352 corresponds to 2400 MHz
     uint16_t actualFreq = frequency - 2048;
@@ -342,14 +342,14 @@ implementation {
       if ( !call SpiResource.isOwner() )
         return FAIL;
       if ( call FIFO.get() ){ // check if there is something in the RXFIFO
-        // SFLUSHRX: "Flush the RX FIFO buffer and reset the demodulator. 
-        // Always read at least one byte from the RXFIFO before 
+        // SFLUSHRX: "Flush the RX FIFO buffer and reset the demodulator.
+        // Always read at least one byte from the RXFIFO before
         // issuing the SFLUSHRX command strobe" (CC2420 Datasheet)
         call CSN.clr();
         call RXFIFO_REGISTER.read(&dummy); // reading the byte
         call CSN.set();
         call CSN.clr();
-        // "SFLUSHRX command strobe should be issued twice to ensure 
+        // "SFLUSHRX command strobe should be issued twice to ensure
         // that the SFD pin goes back to its idle state." (CC2420 Datasheet)
         call SFLUSHRX.strobe();
         call SFLUSHRX.strobe();
@@ -370,7 +370,7 @@ implementation {
     }
     return SUCCESS;
   }
-  
+
   async command error_t CC2420Power.rssi(int8_t *rssi) {
     // we are owner of the Spi !
     uint16_t data;
@@ -384,7 +384,7 @@ implementation {
     } else
       return FAIL;
   }
-  
+
   async command int8_t CC2420Power.rssiFast() {
     // we are owner of the Spi !
     uint16_t data;
@@ -436,7 +436,7 @@ implementation {
       if ( m_sync_busy ) {
         return FAIL;
       }
-      
+
       m_sync_busy = TRUE;
       if ( m_state == S_XOSC_STARTED ) {
         call SyncResource.request();
@@ -473,15 +473,15 @@ implementation {
   command void CC2420Config.setAddressRecognition(bool on) {
     atomic addressRecognition = on;
   }
-  
+
   /**
    * @return TRUE if address recognition is enabled
    */
   async command bool CC2420Config.isAddressRecognitionEnabled() {
     atomic return addressRecognition;
   }
-  
-  
+
+
   /**
    * Sync must be called for acknowledgement changes to take effect
    * @param enableAutoAck TRUE to enable auto acknowledgements
@@ -492,15 +492,15 @@ implementation {
     autoAckEnabled = enableAutoAck;
     hwAutoAckDefault = hwAutoAck;
   }
-  
+
   /**
    * @return TRUE if hardware auto acks are the default, FALSE if software
    *     acks are the default
    */
   async command bool CC2420Config.isHwAutoAckDefault() {
-    atomic return hwAutoAckDefault;    
+    atomic return hwAutoAckDefault;
   }
-  
+
   /**
    * @return TRUE if auto acks are enabled
    */
@@ -529,7 +529,7 @@ implementation {
   }
 
 
-  
+
   /***************** StartupAlarm Events ****************/
   async event void StartupAlarm.fired() {
     if ( m_state == S_VREG_STARTING ) {
@@ -550,7 +550,7 @@ implementation {
     call CSN.clr();
     signal CC2420Power.startOscillatorDone();
   }
- 
+
   /***************** ActiveMessageAddress Events ****************/
 /*  async event void ActiveMessageAddress.changed() {*/
 /*    atomic {*/
@@ -560,7 +560,7 @@ implementation {
 /*    */
 /*    post sync();*/
 /*  }*/
-  
+
   /***************** Tasks ****************/
   /**
    * Attempt to synchronize our current settings with the CC2420
@@ -568,24 +568,24 @@ implementation {
   task void sync() {
     call CC2420Config.sync();
   }
-  
+
   task void syncDone() {
     atomic m_sync_busy = FALSE;
     signal CC2420Config.syncDone( SUCCESS );
   }
-  
-  
+
+
   /***************** Functions ****************/
   /**
    * Write teh FSCTRL register
    */
   void writeFsctrl() {
     uint8_t channel;
-    
+
     atomic {
       channel = m_channel;
     }
-    
+
     call FSCTRL.write( ( 1 << CC2420_FSCTRL_LOCK_THR ) |
           ( ( (channel - 11)*5+357 ) << CC2420_FSCTRL_FREQ ) );
   }
@@ -596,7 +596,7 @@ implementation {
   void writeMdmctrl0() {
     atomic {
       call MDMCTRL0.write( ( 0 << CC2420_MDMCTRL0_RESERVED_FRAME_MODE ) |
-          ( 0 << CC2420_MDMCTRL0_PAN_COORDINATOR ) | 
+          ( 0 << CC2420_MDMCTRL0_PAN_COORDINATOR ) |
           ( 1 << CC2420_MDMCTRL0_ADR_DECODE ) |
           ( 2 << CC2420_MDMCTRL0_CCA_HYST ) |
           ( 2 << CC2420_MDMCTRL0_CCA_MOD ) | // CCA=1 when not receiving valid IEEE 802.15.4 data, CCA=0 otherwise
@@ -608,7 +608,7 @@ implementation {
     // MDMCTRL1.CORR_THR is defaulted to 20 instead of 0 like the datasheet says
     // If we add in changes to MDMCTRL1, be sure to include this fix.
   }
-  
+
   /**
    * Write the IEEEADR register
    */
@@ -627,8 +627,8 @@ implementation {
     }
 /*    if (m_pan == 0xFFFF)*/
 /*      bcnAccept = 1;*/
-    
-    
+
+
     call IOCFG0.write( (bcnAccept << CC2420_IOCFG0_BCN_ACCEPT) |
         ( 1 << CC2420_IOCFG0_FIFOP_POLARITY ) |
           ( 127 << CC2420_IOCFG0_FIFOP_THR ) );
@@ -637,12 +637,12 @@ implementation {
   }
 
 
-  
+
   /***************** Defaults ****************/
   default event void CC2420Config.syncDone( error_t error ) {
   }
 
 /*  default event void ReadRssi.readDone(error_t error, uint16_t data) {*/
 /*  }*/
-  
+
 }
