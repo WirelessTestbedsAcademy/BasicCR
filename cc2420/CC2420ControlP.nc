@@ -238,8 +238,8 @@ implementation {
       // Avoiding Saturation in RSSI Readings via the patch described in Sect.
       // 3.2 in: "JamLab: Augmenting Sensornet Testbeds with Realistic and
       // Controlled Interference Generation" (IPSN2011)
-      call AGCTST1.read(&temp);
-      call AGCTST1.write((temp + (1 << 8) + (1 << 13)));
+      /* call AGCTST1.read(&temp); */
+      /* call AGCTST1.write((temp + (1 << 8) + (1 << 13))); */
 
 
       call RXCTRL1.write( ( 1 << CC2420_RXCTRL1_RXBPF_LOCUR ) |
