@@ -1,0 +1,8 @@
+# Ignore generated files
+CBChannelMaskMsg.[ch]
+CBChannelMaskMsg.py
+CBRepoQueryMsg.[ch]
+CBRepoQueryMsg.py
+CBSweepDataMsg.[ch]
+CBSweepDataMsg.py
+build/
