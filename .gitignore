@@ -6,3 +6,4 @@ CBRepoQueryMsg.py
 CBSweepDataMsg.[ch]
 CBSweepDataMsg.py
 build/
+test
