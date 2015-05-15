@@ -31,7 +31,9 @@ To run the cr application:
     $ open the 'cr_application.grc' with GRC, adapt the IP address of the USRP's according to the reservation
     $ execute the flow graph with the "run" button 
     $ alternatively we can directly run the python file without using GRC to start the transmission. 
-    $ now you should be able to control the primary transmitter's frequency and observe that when the primary transmitter's frequency overlaps with the the CR tranceivers, the bit error rate of the CR  tranceivers will drop, therefore they will jump to the next best channel according to the information of the database, afterwards the bit error rate will return to zero again. 
+    $ use the slider to change the primary transmitter's frequency, you should observe:
+         when the primary transmitter's frequency overlaps with the the CR tranceivers, the bit error rate of the secondary tranceivers rises 
+         the secondary tranceivers jumps to a new channel and the bit error rate drops to normal level
 
 This .grc file builds upon the basic tx and rx application. Hence the common elements are ommited, only the additonal blocks are described here:
   * Random source
@@ -44,4 +46,6 @@ This .grc file builds upon the basic tx and rx application. Hence the common ele
     * Calculates the bit error rate of the secondary tranceivers 
   * db_channel_selector
     * Queries the database for a new frequency when the bit error rate is lower than a specified threshold
+  * Function probe
+    * It is a call back function that updates the frequency parameters in the secondary USRP tranceivers
 
