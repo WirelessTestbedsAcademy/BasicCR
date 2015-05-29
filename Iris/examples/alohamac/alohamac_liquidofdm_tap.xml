@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+
+<softwareradio name="alohamac_liquidofdm_rx">
+
+  <engine name="stackengine1" class="stackengine">
+
+    <component name="tuntap0" class="tuntap">
+      <parameter name="device" value="tap0"/>
+      <parameter name="readfrombelow" value="true"/>
+      <port name="bottomport1" class="io"/>
+    </component>
+
+    <component name="alohamac0" class="alohamac">
+       <parameter name="isethdevice" value="true"/>
+       <parameter name="ethdevicename" value="tap0"/>
+       <parameter name="acktimeout" value="100"/>
+       <parameter name="maxretry" value="3"/>
+       <port name="topport1" class="io"/>
+       <port name="bottomport1" class="io"/>
+    </component>
+
+  </engine>
+
+  <engine name="phyengine1" class="phyengine">
+
+    <component name="usrprx1" class="usrprx">
+      <parameter name="frequency" value="5010000000"/>
+      <parameter name="rate" value="2500000"/>
+      <parameter name="antenna" value="J1"/>
+      <parameter name="gain" value="15"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="liquidofdmdemod1" class="liquidofdmdemod">
+      <parameter name="debug" value="false"/>
+      <parameter name="subcarriers" value="64"/>
+      <parameter name="prefixlength" value="16"/>
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+  </engine>
+
+  <engine name="phyengine2" class="phyengine">
+
+    <component name="liquidofdmmod1" class="liquidofdmmod">
+      <parameter name="debug" value="true"/>
+      <parameter name="subcarriers" value="64"/>
+      <parameter name="prefixlength" value="16"/>
+      <parameter name="modulation" value="qpsk"/>
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="signalscaler1" class="signalscaler">
+      <parameter name="maximum" value="0.6"/>
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="usrptx1" class="usrptx">
+      <parameter name="frequency" value="5010000000"/>
+      <parameter name="rate" value="2500000"/>
+      <parameter name="antenna" value="J1"/>
+      <parameter name="gain" value="10"/>
+      <parameter name="streaming" value="false"/>
+      <port name="input1" class="input"/>
+    </component>
+
+  </engine>
+
+  <link above="tuntap0.topport1" below="alohamac0.bottomport1" />
+  
+  <link source="usrprx1.output1" sink="liquidofdmdemod1.input1" />
+  <link source="liquidofdmdemod1.output1" sink="alohamac0.bottomport1" />   
+  
+  <link source="alohamac0.bottomport1" sink="liquidofdmmod1.input1" />
+  <link source="liquidofdmmod1.output1" sink="signalscaler1.input1" />
+  <link source="signalscaler1.output1" sink="usrptx1.input1" />
+
+</softwareradio>

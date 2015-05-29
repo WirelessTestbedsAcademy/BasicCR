@@ -1,0 +1,24 @@
+/** @mainpage Iris Modules
+*
+* @section intro Introduction
+* This package contains the components and controller which may be used to create radios with the Iris software radio
+* framework.
+*
+* Example modules are available for reference:
+* 
+* - Example Phy Component
+* -# components/gpp/phy/Example/ExampleComponent.h
+*
+* - Example Stack Component
+* -# components/gpp/stack/Example/ExampleComponent.h
+*
+* - Example Controller
+* -# controllers/Example/ExampleController.h
+*
+*
+* For more support, please refer to our wiki pages <A HREF="http://www.softwareradiosystems.com/redmine/projects/iris"> here </A>.
+*
+* Details on our support mailing lists can be found <A HREF="http://www.softwareradiosystems.com/mailman/listinfo"> here </A>.
+*
+*
+*/

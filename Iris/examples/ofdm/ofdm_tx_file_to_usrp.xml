@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+
+<softwareradio name="Radio1">
+
+  <engine name="phyengine1" class="phyengine">
+
+    <component name="filerawreader1" class="filerawreader">
+      <parameter name="filename" value="testdata.txt"/>
+      <parameter name="blocksize" value="140"/>
+      <parameter name="datatype" value="uint8_t"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="ofdmmod1" class="ofdmmodulator">
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="signalscaler1" class="signalscaler">
+      <parameter name="maximum" value="0.9"/>
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="usrptx1" class="usrptx">
+      <parameter name="frequency" value="5010000000"/>
+      <parameter name="rate" value="1000000"/>
+      <parameter name="streaming" value="false"/>
+      <port name="input1" class="input"/>
+    </component>
+
+  </engine>
+
+  <link source="filerawreader1.output1" sink="ofdmmod1.input1" />
+  <link source="ofdmmod1.output1" sink="signalscaler1.input1" />
+  <link source="signalscaler1.output1" sink="usrptx1.input1" />
+
+</softwareradio>
