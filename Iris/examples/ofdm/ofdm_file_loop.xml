@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+
+<softwareradio name="Radio1">
+
+  <engine name="phyengine1" class="phyengine">
+
+    <component name="filerawreader1" class="filerawreader">
+      <parameter name="filename" value="testdata.txt"/>
+      <parameter name="blocksize" value="1024"/>
+      <parameter name="datatype" value="uint8_t"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="ofdmmod1" class="ofdmmodulator">
+      <parameter name="numdatacarriers" value="192"/>
+      <parameter name="numpilotcarriers" value="8"/>
+      <parameter name="numguardcarriers" value="55"/>
+      <parameter name="cyclicprefixlength" value="16"/>
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="ofdmdemod1" class="ofdmdemodulator">
+      <parameter name="numdatacarriers" value="192"/>
+      <parameter name="numpilotcarriers" value="8"/>
+      <parameter name="numguardcarriers" value="55"/>
+      <parameter name="cyclicprefixlength" value="16"/>
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="filerawwriter1" class="filerawwriter">
+      <parameter name="filename" value="out.txt"/>
+      <port name="input1" class="input"/>
+    </component>
+
+  </engine>
+
+  <link source="filerawreader1.output1" sink="ofdmmod1.input1" />
+  <link source="ofdmmod1.output1" sink="ofdmdemod1.input1" />
+  <link source="ofdmdemod1.output1" sink="filerawwriter1.input1" />
+
+</softwareradio>
