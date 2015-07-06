@@ -1,0 +1,3 @@
+http://commsys.ijs.si/~tsolc/python/vesna-spectrumsensor-1.0.0.tar.gz
+http://commsys.ijs.si/~tsolc/python/vesna-alhtools-0.1.tar.gz
+numpy
