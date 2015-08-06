@@ -1,7 +1,7 @@
 COMPONENT=SpectrumMonitorAppC
 CFLAGS += -I$(TINYOS_OS_DIR)/lib/printf
 CFLAGS += -DNEW_PRINTF_SEMANTICS
-TOSMAKE_FIRST_FLAGS +=  -I./cc2420/ -pthread -I../BANapp/
+TOSMAKE_FIRST_FLAGS +=  -I./cc2420/ -pthread
 PYTHON_MSG_FILES += CBSweepDataMsg.py CBChannelMaskMsg.py CBRepoQueryMsg.py printf.py
 C_MSG_HEADER_FILES += CBSweepDataMsg.h CBChannelMaskMsg.h CBRepoQueryMsg.h
 C_TEST_PROGRAM += test
