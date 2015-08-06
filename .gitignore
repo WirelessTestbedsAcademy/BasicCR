@@ -5,5 +5,7 @@ CBRepoQueryMsg.[ch]
 CBRepoQueryMsg.py
 CBSweepDataMsg.[ch]
 CBSweepDataMsg.py
+printf.py
 build/
 test
+*.pyc
