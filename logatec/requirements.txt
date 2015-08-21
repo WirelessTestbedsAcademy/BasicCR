@@ -1,0 +1,3 @@
+vesna-spectrumsensor
+vesna-alhtools
+numpy

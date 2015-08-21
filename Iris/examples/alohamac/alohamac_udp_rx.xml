@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+
+<softwareradio name="alohamac_upd_rx">
+
+    <engine name="stackengine1" class="stackengine">
+
+        <component name="filewriter0" class="filewriter">
+            <parameter name="filename" value="output.bin"/>
+            <parameter name="frombelow" value="false"/>
+            <port name="topport1" class="io"/>
+            <port name="bottomport1" class="io"/>
+        </component>
+
+        <component name="alohamac0" class="alohamac">
+            <parameter name="localaddress" value="aabbcc222222"/>
+            <parameter name="destinationaddress" value="aabbcc111111"/>
+            <parameter name="acktimeout" value="10"/>
+            <parameter name="maxretry" value="3"/>
+            <port name="topport1" class="io"/>
+            <port name="bottomport1" class="io"/>
+        </component>
+
+    </engine>
+
+    <engine name="phyengine1" class="phyengine">
+        
+        <component name="clientsocketin0" class="udpsocketrx">
+            <parameter name="port" value="5180"/>
+            <parameter name="buffersize" value="100000"/>
+            <parameter name="outputType" value="uint8_t"/>
+            <port name="output1" class="output"/>
+        </component>
+    
+    </engine>
+    
+    <engine name="phyengine2" class="phyengine">
+        
+        <component name="clientsocketout0" class="udpsockettx">
+            <parameter name="port" value="5170"/>
+            <port name="input1" class="input"/>
+        </component>
+        
+    </engine>
+
+    <link source="filewriter0.bottomport1" sink="alohamac0.topport1" />
+    <link source="alohamac0.bottomport1" sink="clientsocketout0.input1" />
+    <link source="clientsocketin0.output1" sink="alohamac0.bottomport1" />
+    
+</softwareradio>

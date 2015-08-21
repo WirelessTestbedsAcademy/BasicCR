@@ -2,7 +2,7 @@ About
 =====
 
 The Wireless Testbed Academy contains source code that can be run on open wireless experimental testbeds. The following open experimentation/testing facilities are supported:
-* iMinds [w-iLab.t](http://ilabt.iminds.be/wilabt)
+* iMinds [w-iLab.t](http://doc.ilabt.iminds.be/ilabt-documentation/wilabfacility.html)
 * TUB [TWIST](http://www.twist.tu-berlin.de/wiki)
 * TCD IRIS
 * TUD

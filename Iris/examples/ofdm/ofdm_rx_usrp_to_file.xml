@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?> 
+
+<softwareradio name="Radio1">
+
+  <engine name="phyengine1" class="phyengine">
+
+    <component name="usrprx1" class="usrprx">
+      <parameter name="frequency" value="5010000000"/>
+      <parameter name="rate" value="500000"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="ofdmdemod1" class="ofdmdemodulator">
+      <port name="input1" class="input"/>
+      <port name="output1" class="output"/>
+    </component>
+
+    <component name="filerawwriter1" class="filerawwriter">
+      <parameter name="filename" value="out.txt"/>
+      <port name="input1" class="input"/>
+    </component>
+
+  </engine>
+
+  <link source="usrprx1.output1" sink="ofdmdemod1.input1" />
+  <link source="ofdmdemod1.output1" sink="filerawwriter1.input1" />
+
+</softwareradio>
