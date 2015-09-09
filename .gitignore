@@ -7,5 +7,5 @@ CBSweepDataMsg.[ch]
 CBSweepDataMsg.py
 printf.py
 build/
-test
+sensorapp
 *.pyc
