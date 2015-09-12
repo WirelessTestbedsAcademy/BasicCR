@@ -5,15 +5,15 @@ Simple cognitive radio example
 LOG-a-TEC
 ---------
 
-The `logatec.py` script uses one node the Industrial Zone cluster of the
+The `logatec.py` script uses one node the Campus cluster of the
 LOG-a-TEC testbed to simulate a cognitive terminal. Another node is used to
-simulate a legacy terminal, while three other nodes are setup as spectrum
+simulate a legacy terminal, while two other nodes are setup as spectrum
 sensors and observe the transmission.
 
 Since the LOG-a-TEC testbed does not currently support packet based
 transmissions and low-latency control of the sensor nodes, the behavior and
 transmission frequencies of nodes are programmed in advance. As such this is
-not a true demonstration of a cognitive radio, but rather a simulation of how
+not a true demonstration of a cognitive radio, but rather a demonstration of how
 to simulate a presence of one in the testbed.
 
 ![](node_17.png)
@@ -35,4 +35,8 @@ To run the experiment:
 
     $ python logatec.py
 
-See comments in the script for more details.
+The script saves the recorded spectrogram data into the `data` subdirectory. Data is written into text-based files that are simple to import into Matlab or other software. To visualize using GNU Plot, run:
+
+    $ gnuplot -p basiccr.gnuplot
+
+See comments in the `logatec.py` script for more details.

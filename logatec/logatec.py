@@ -19,7 +19,7 @@ def main():
 	logging.basicConfig(level=logging.INFO)
 
 	# We must first create an object representing the coordinator node.
-	coor_industrial_zone = alh.ALHWeb("https://crn.log-a-tec.eu/communicator", 10001)
+	coor_campus = alh.ALHWeb("https://crn.log-a-tec.eu/communicator", 9501)
 
 	# Our experiment will start 15 seconds into the future - this should
 	# give us plenty of time to set up everything.
@@ -27,9 +27,9 @@ def main():
 
 	# First we set up the two transmitting nodes:
 	#
-	# Node 25 in the LOG-a-TEC Industrial Zone will be playing the role of
+	# Node 53 in the LOG-a-TEC Campus Zone will be playing the role of
 	# the cognitive terminal.
-	cognitive_terminal = SignalGenerator(alh.ALHProxy(coor_industrial_zone, 25))
+	cognitive_terminal = SignalGenerator(alh.ALHProxy(coor_campus, 53))
 
 	# All nodes we will be using are equipped with SNE-ISMTV-2400 radio
 	# boards with CC2500 transceivers. From the available list of
@@ -52,9 +52,9 @@ def main():
 		time_duration=23))
 
 
-	# Node 16 in the LOG-a-TEC Industrial Zone will be playing the role of
+	# Node 54 in the LOG-a-TEC Campus Zone will be playing the role of
 	# the legacy terminal.
-	legacy_terminal = SignalGenerator(alh.ALHProxy(coor_industrial_zone, 16))
+	legacy_terminal = SignalGenerator(alh.ALHProxy(coor_campus, 54))
 
 	# The legacy terminal, lacking the capability to change channels on
 	# demand, is programmed to just transmit for 30 seconds on channel 114
@@ -67,10 +67,10 @@ def main():
 	# Now we setup some sensing nodes so that we can observe the
 	# transmissions from different points in the testbed.
 
-	# We will use nodes 2, 17 and 6 for this purpose.
-	sensor_node_ids = [ 2, 17, 6 ]
+	# We will use nodes 51 and 58 for this purpose.
+	sensor_node_ids = [ 51, 58 ]
 
-	sensor_nodes = [ alh.ALHProxy(coor_industrial_zone, id) for id in sensor_node_ids ]
+	sensor_nodes = [ alh.ALHProxy(coor_campus, id) for id in sensor_node_ids ]
 	sensors = [ SpectrumSensor(sensor_node) for sensor_node in sensor_nodes ]
 
 	# For sensing, we will use the first sensing configuration (255
