@@ -18,6 +18,7 @@ Requirements:
   * [Request an w-iLab.t testbed account](http://ilabt.iminds.be/gettingstarted)
   * [Basic knowledge of the w-iLab.t Zwijnaarde testbed](http://ilabt.iminds.be/node/93)
   * [Basic knowledge of using USRP in w-iLab.t Zwijnaarde testbed](http://doc.ilabt.iminds.be/ilabt-documentation/wilabfacility.html#using-the-usrp-devices)
+  * [Followed the BasicTx and BasicRx tutorials]
 
 To run the cr application:
 
