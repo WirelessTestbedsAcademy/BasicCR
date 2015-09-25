@@ -2,7 +2,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: interferrer
-# Generated: Mon Aug 24 16:53:39 2015
+# Generated: Mon Sep 14 14:03:01 2015
 ##################################################
 
 if __name__ == '__main__':
@@ -72,13 +72,13 @@ class interferrer(gr.top_block, Qt.QWidget):
         	",".join(("", "")),
         	uhd.stream_args(
         		cpu_format="fc32",
-        		args="addr=192.168.30.2",
+        		args="addr=192.168.40.2",
         		channels=range(1),
         	),
         )
         self.uhd_usrp_sink_1.set_samp_rate(samp_rate)
         self.uhd_usrp_sink_1.set_center_freq(usrp_int_freq, 0)
-        self.uhd_usrp_sink_1.set_gain(26, 0)
+        self.uhd_usrp_sink_1.set_gain(30, 0)
         self.digital_gfsk_mod_0 = digital.gfsk_mod(
         	samples_per_symbol=2,
         	sensitivity=1.0,

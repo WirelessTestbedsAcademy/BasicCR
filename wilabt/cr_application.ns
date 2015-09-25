@@ -6,7 +6,7 @@ source tb_compat.tcl
 set serv4 [$ns node]
 $serv4 add-desire SERVER5P 1.0
 tb-fix-node $serv4 server4
-tb-set-node-os $serv4 gnuradio-3.7.2-serv
+tb-set-node-os $serv4 ubu12gnuradio3.7.7
 
 
 # Require 4 usrp devices

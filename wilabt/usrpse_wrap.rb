@@ -270,8 +270,8 @@ class Wrapper
 	def start()
 		printinfo "start execute the usrpse wrapper now..."
 		printinfo "configure the system buffer size... "
-		`sudo sysctl -w net.core.wmem_max=1048576`
-		`sudo sysctl -w net.core.rmem_max=50000000`		
+		#`sudo sysctl -w net.core.wmem_max=1048576`
+		#`sudo sysctl -w net.core.rmem_max=50000000`		
 		 
 		# open a child process to execute the sensing binaries 
 		PTY.spawn @cmd do |r,w,p|
