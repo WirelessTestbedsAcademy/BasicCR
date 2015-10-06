@@ -2,7 +2,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Cr Application
-# Generated: Mon Sep 14 14:02:35 2015
+# Generated: Tue Oct  6 10:33:49 2015
 ##################################################
 
 if __name__ == '__main__':
@@ -20,8 +20,6 @@ import sys
 sys.path.append(os.environ.get('GRC_HIER_PATH', os.path.expanduser('~/.grc_gnuradio')))
 
 from PyQt4 import Qt
-from crew_packet_gen import crew_packet_gen
-from fll_pfb_corr_costas import fll_pfb_corr_costas
 from gnuradio import blocks
 from gnuradio import digital
 from gnuradio import eng_notation
@@ -30,8 +28,12 @@ from gnuradio import qtgui
 from gnuradio import uhd
 from gnuradio.eng_option import eng_option
 from gnuradio.filter import firdes
+from gnuradio.qtgui import Range, RangeWidget
 from optparse import OptionParser
+from packet_gen import packet_gen
+from sync_blocks import sync_blocks
 import crew
+import numpy
 import sip
 import threading
 import time
@@ -66,19 +68,16 @@ class cr_application(gr.top_block, Qt.QWidget):
         ##################################################
         # Variables
         ##################################################
-        self.tx_pkt_rate = tx_pkt_rate = 50
-        self.sps = sps = 4
-        self.samp_rate = samp_rate = 200000
         self.preamble = preamble = [1,-1,1,-1,1,1,-1,-1,1,1,-1,1,1,1,-1,1,1,-1,1,-1,-1,1,-1,-1,1,1,1,-1,-1,-1,1,-1,1,1,1,1,-1,-1,1,-1,1,-1,-1,-1,1,1,-1,-1,-1,-1,1,-1,-1,-1,-1,-1,1,1,1,1,1,1,-1,-1]
+        self.usrp_rf_freq = usrp_rf_freq = 2435000000
+        self.usrp_int_freq = usrp_int_freq = 2400000000
+        self.tx_pkt_rate = tx_pkt_rate = 157
+        self.samp_rate = samp_rate = 200000
+        self.preamble_qpsk = preamble_qpsk = map(lambda x: x*(1+1j)/pow(2,0.5), preamble)
         self.payload_size = payload_size = 50
         self.nfilts = nfilts = 32
         self.eb = eb = 0.35
-        self.usrp_rf_freq = usrp_rf_freq = 2435000000
-        self.rrc_taps = rrc_taps = firdes.root_raised_cosine(nfilts, nfilts, 1.0/float(sps), eb, 5*sps*nfilts)
-        self.matched_filter = matched_filter = firdes.root_raised_cosine(nfilts, nfilts, 1, eb, int(11*sps*nfilts))
-        self.gap = gap = samp_rate/tx_pkt_rate-sps*(len(preamble)+32+payload_size*8+32+24)
         self.digital_gain = digital_gain = 1.0/8
-        self.constel = constel = digital.constellation_calcdist(([1,- 1]), ([0,1]), 2, 1).base()
 
         ##################################################
         # Blocks
@@ -95,6 +94,9 @@ class cr_application(gr.top_block, Qt.QWidget):
         _usrp_rf_freq_thread = threading.Thread(target=_usrp_rf_freq_probe)
         _usrp_rf_freq_thread.daemon = True
         _usrp_rf_freq_thread.start()
+        self._usrp_int_freq_range = Range(2400000000, 2480000000, 5000000, 2400000000, 100)
+        self._usrp_int_freq_win = RangeWidget(self._usrp_int_freq_range, self.set_usrp_int_freq, "usrp_int_freq", "counter_slider")
+        self.top_layout.addWidget(self._usrp_int_freq_win)
         self.uhd_usrp_source_0_0 = uhd.usrp_source(
         	",".join(("addr=192.168.20.2", "")),
         	uhd.stream_args(
@@ -104,10 +106,21 @@ class cr_application(gr.top_block, Qt.QWidget):
         )
         self.uhd_usrp_source_0_0.set_samp_rate(samp_rate)
         self.uhd_usrp_source_0_0.set_center_freq(usrp_rf_freq, 0)
-        self.uhd_usrp_source_0_0.set_gain(30, 0)
+        self.uhd_usrp_source_0_0.set_gain(28, 0)
         self.uhd_usrp_source_0_0.set_antenna("J1", 0)
+        self.uhd_usrp_sink_1 = uhd.usrp_sink(
+        	",".join(("", "")),
+        	uhd.stream_args(
+        		cpu_format="fc32",
+        		args="addr=192.168.60.2",
+        		channels=range(1),
+        	),
+        )
+        self.uhd_usrp_sink_1.set_samp_rate(samp_rate*8)
+        self.uhd_usrp_sink_1.set_center_freq(usrp_int_freq, 0)
+        self.uhd_usrp_sink_1.set_gain(30, 0)
         self.uhd_usrp_sink_0_0 = uhd.usrp_sink(
-        	",".join(("addr=192.168.30.2", "")),
+        	",".join(("addr=192.168.50.2", "")),
         	uhd.stream_args(
         		cpu_format="fc32",
         		channels=range(1),
@@ -115,8 +128,11 @@ class cr_application(gr.top_block, Qt.QWidget):
         )
         self.uhd_usrp_sink_0_0.set_samp_rate(samp_rate)
         self.uhd_usrp_sink_0_0.set_center_freq(usrp_rf_freq, 0)
-        self.uhd_usrp_sink_0_0.set_gain(30, 0)
+        self.uhd_usrp_sink_0_0.set_gain(26, 0)
         self.uhd_usrp_sink_0_0.set_antenna("J1", 0)
+        self.sync_blocks_0 = sync_blocks(
+            digital_gain=19,
+        )
         self.qtgui_number_sink_0 = qtgui.number_sink(
                 gr.sizeof_float,
                 0,
@@ -188,99 +204,54 @@ class cr_application(gr.top_block, Qt.QWidget):
         
         self._qtgui_const_sink_x_0_0_win = sip.wrapinstance(self.qtgui_const_sink_x_0_0.pyqwidget(), Qt.QWidget)
         self.top_grid_layout.addWidget(self._qtgui_const_sink_x_0_0_win, 0,0,1,1)
-        self.fll_pfb_corr_costas_0 = fll_pfb_corr_costas()
-        self.crew_packet_gen_0 = crew_packet_gen(
-            packet_len=payload_size,
-            gap=gap,
+        self.packet_gen_0 = packet_gen(
+            payload_size=payload_size,
         )
-        self.crew_packet_decoder_cb_0 = crew.packet_decoder_cb((preamble))
+        self.digital_gfsk_mod_0 = digital.gfsk_mod(
+        	samples_per_symbol=2,
+        	sensitivity=1.0,
+        	bt=0.35,
+        	verbose=False,
+        	log=False,
+        )
+        self.crew_packet_decoder_cb_0 = crew.packet_decoder_cb((preamble_qpsk))
         self.blocks_null_sink_0 = blocks.null_sink(gr.sizeof_char*1)
         self.blocks_multiply_const_vxx_1_0 = blocks.multiply_const_vff((1.0/(tx_pkt_rate), ))
         self.blocks_multiply_const_vxx_1 = blocks.multiply_const_vff((-1.0/(tx_pkt_rate), ))
-        self.blocks_multiply_const_vxx_0_0 = blocks.multiply_const_vcc((53, ))
-        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_vcc((digital_gain, ))
+        self.blocks_multiply_const_vxx_0_0 = blocks.multiply_const_vcc((1.0/4, ))
         self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, "/users/lwei/GITfolder/wirelessacademy/BasicTx/wilabt/file_sent.txt", True)
         self.blocks_add_const_vxx_0 = blocks.add_const_vff((1.0, ))
+        self.analog_random_source_x_1 = blocks.vector_source_b(map(int, numpy.random.randint(0, 256, 1000)), True)
 
         ##################################################
         # Connections
         ##################################################
+        self.connect((self.analog_random_source_x_1, 0), (self.digital_gfsk_mod_0, 0))    
         self.connect((self.blocks_add_const_vxx_0, 0), (self.crew_db_channel_selector_0, 0))    
-        self.connect((self.blocks_file_source_0, 0), (self.crew_packet_gen_0, 0))    
-        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.uhd_usrp_sink_0_0, 0))    
-        self.connect((self.blocks_multiply_const_vxx_0_0, 0), (self.fll_pfb_corr_costas_0, 0))    
+        self.connect((self.blocks_file_source_0, 0), (self.packet_gen_0, 0))    
+        self.connect((self.blocks_multiply_const_vxx_0_0, 0), (self.uhd_usrp_sink_1, 0))    
         self.connect((self.blocks_multiply_const_vxx_1, 0), (self.blocks_add_const_vxx_0, 0))    
         self.connect((self.blocks_multiply_const_vxx_1_0, 0), (self.qtgui_number_sink_0, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 1), (self.blocks_multiply_const_vxx_1, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 1), (self.blocks_multiply_const_vxx_1_0, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 0), (self.blocks_null_sink_0, 0))    
-        self.connect((self.crew_packet_gen_0, 0), (self.blocks_multiply_const_vxx_0, 0))    
-        self.connect((self.fll_pfb_corr_costas_0, 0), (self.crew_packet_decoder_cb_0, 0))    
-        self.connect((self.fll_pfb_corr_costas_0, 0), (self.qtgui_const_sink_x_0_0, 0))    
-        self.connect((self.uhd_usrp_source_0_0, 0), (self.blocks_multiply_const_vxx_0_0, 0))    
+        self.connect((self.digital_gfsk_mod_0, 0), (self.blocks_multiply_const_vxx_0_0, 0))    
+        self.connect((self.packet_gen_0, 0), (self.uhd_usrp_sink_0_0, 0))    
+        self.connect((self.sync_blocks_0, 0), (self.crew_packet_decoder_cb_0, 0))    
+        self.connect((self.sync_blocks_0, 0), (self.qtgui_const_sink_x_0_0, 0))    
+        self.connect((self.uhd_usrp_source_0_0, 0), (self.sync_blocks_0, 0))    
 
     def closeEvent(self, event):
         self.settings = Qt.QSettings("GNU Radio", "cr_application")
         self.settings.setValue("geometry", self.saveGeometry())
         event.accept()
 
-    def get_tx_pkt_rate(self):
-        return self.tx_pkt_rate
-
-    def set_tx_pkt_rate(self, tx_pkt_rate):
-        self.tx_pkt_rate = tx_pkt_rate
-        self.set_gap(self.samp_rate/self.tx_pkt_rate-self.sps*(len(self.preamble)+32+self.payload_size*8+32+24))
-        self.blocks_multiply_const_vxx_1.set_k((-1.0/(self.tx_pkt_rate), ))
-        self.blocks_multiply_const_vxx_1_0.set_k((1.0/(self.tx_pkt_rate), ))
-
-    def get_sps(self):
-        return self.sps
-
-    def set_sps(self, sps):
-        self.sps = sps
-        self.set_gap(self.samp_rate/self.tx_pkt_rate-self.sps*(len(self.preamble)+32+self.payload_size*8+32+24))
-        self.set_rrc_taps(firdes.root_raised_cosine(self.nfilts, self.nfilts, 1.0/float(self.sps), self.eb, 5*self.sps*self.nfilts))
-        self.set_matched_filter(firdes.root_raised_cosine(self.nfilts, self.nfilts, 1, self.eb, int(11*self.sps*self.nfilts)))
-
-    def get_samp_rate(self):
-        return self.samp_rate
-
-    def set_samp_rate(self, samp_rate):
-        self.samp_rate = samp_rate
-        self.set_gap(self.samp_rate/self.tx_pkt_rate-self.sps*(len(self.preamble)+32+self.payload_size*8+32+24))
-        self.uhd_usrp_source_0_0.set_samp_rate(self.samp_rate)
-        self.uhd_usrp_sink_0_0.set_samp_rate(self.samp_rate)
-
     def get_preamble(self):
         return self.preamble
 
     def set_preamble(self, preamble):
         self.preamble = preamble
-        self.set_gap(self.samp_rate/self.tx_pkt_rate-self.sps*(len(self.preamble)+32+self.payload_size*8+32+24))
-
-    def get_payload_size(self):
-        return self.payload_size
-
-    def set_payload_size(self, payload_size):
-        self.payload_size = payload_size
-        self.set_gap(self.samp_rate/self.tx_pkt_rate-self.sps*(len(self.preamble)+32+self.payload_size*8+32+24))
-        self.crew_packet_gen_0.set_packet_len(self.payload_size)
-
-    def get_nfilts(self):
-        return self.nfilts
-
-    def set_nfilts(self, nfilts):
-        self.nfilts = nfilts
-        self.set_rrc_taps(firdes.root_raised_cosine(self.nfilts, self.nfilts, 1.0/float(self.sps), self.eb, 5*self.sps*self.nfilts))
-        self.set_matched_filter(firdes.root_raised_cosine(self.nfilts, self.nfilts, 1, self.eb, int(11*self.sps*self.nfilts)))
-
-    def get_eb(self):
-        return self.eb
-
-    def set_eb(self, eb):
-        self.eb = eb
-        self.set_rrc_taps(firdes.root_raised_cosine(self.nfilts, self.nfilts, 1.0/float(self.sps), self.eb, 5*self.sps*self.nfilts))
-        self.set_matched_filter(firdes.root_raised_cosine(self.nfilts, self.nfilts, 1, self.eb, int(11*self.sps*self.nfilts)))
+        self.set_preamble_qpsk(map(lambda x: x*(1+1j)/pow(2,0.5), self.preamble))
 
     def get_usrp_rf_freq(self):
         return self.usrp_rf_freq
@@ -290,37 +261,60 @@ class cr_application(gr.top_block, Qt.QWidget):
         self.uhd_usrp_source_0_0.set_center_freq(self.usrp_rf_freq, 0)
         self.uhd_usrp_sink_0_0.set_center_freq(self.usrp_rf_freq, 0)
 
-    def get_rrc_taps(self):
-        return self.rrc_taps
+    def get_usrp_int_freq(self):
+        return self.usrp_int_freq
 
-    def set_rrc_taps(self, rrc_taps):
-        self.rrc_taps = rrc_taps
+    def set_usrp_int_freq(self, usrp_int_freq):
+        self.usrp_int_freq = usrp_int_freq
+        self.uhd_usrp_sink_1.set_center_freq(self.usrp_int_freq, 0)
 
-    def get_matched_filter(self):
-        return self.matched_filter
+    def get_tx_pkt_rate(self):
+        return self.tx_pkt_rate
 
-    def set_matched_filter(self, matched_filter):
-        self.matched_filter = matched_filter
+    def set_tx_pkt_rate(self, tx_pkt_rate):
+        self.tx_pkt_rate = tx_pkt_rate
+        self.blocks_multiply_const_vxx_1_0.set_k((1.0/(self.tx_pkt_rate), ))
+        self.blocks_multiply_const_vxx_1.set_k((-1.0/(self.tx_pkt_rate), ))
 
-    def get_gap(self):
-        return self.gap
+    def get_samp_rate(self):
+        return self.samp_rate
 
-    def set_gap(self, gap):
-        self.gap = gap
-        self.crew_packet_gen_0.set_gap(self.gap)
+    def set_samp_rate(self, samp_rate):
+        self.samp_rate = samp_rate
+        self.uhd_usrp_source_0_0.set_samp_rate(self.samp_rate)
+        self.uhd_usrp_sink_0_0.set_samp_rate(self.samp_rate)
+        self.uhd_usrp_sink_1.set_samp_rate(self.samp_rate*8)
+
+    def get_preamble_qpsk(self):
+        return self.preamble_qpsk
+
+    def set_preamble_qpsk(self, preamble_qpsk):
+        self.preamble_qpsk = preamble_qpsk
+
+    def get_payload_size(self):
+        return self.payload_size
+
+    def set_payload_size(self, payload_size):
+        self.payload_size = payload_size
+        self.packet_gen_0.set_payload_size(self.payload_size)
+
+    def get_nfilts(self):
+        return self.nfilts
+
+    def set_nfilts(self, nfilts):
+        self.nfilts = nfilts
+
+    def get_eb(self):
+        return self.eb
+
+    def set_eb(self, eb):
+        self.eb = eb
 
     def get_digital_gain(self):
         return self.digital_gain
 
     def set_digital_gain(self, digital_gain):
         self.digital_gain = digital_gain
-        self.blocks_multiply_const_vxx_0.set_k((self.digital_gain, ))
-
-    def get_constel(self):
-        return self.constel
-
-    def set_constel(self, constel):
-        self.constel = constel
 
 
 if __name__ == '__main__':
