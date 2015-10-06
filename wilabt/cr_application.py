@@ -2,7 +2,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Cr Application
-# Generated: Tue Oct  6 10:33:49 2015
+# Generated: Tue Oct  6 11:46:31 2015
 ##################################################
 
 if __name__ == '__main__':
@@ -215,11 +215,12 @@ class cr_application(gr.top_block, Qt.QWidget):
         	log=False,
         )
         self.crew_packet_decoder_cb_0 = crew.packet_decoder_cb((preamble_qpsk))
-        self.blocks_null_sink_0 = blocks.null_sink(gr.sizeof_char*1)
         self.blocks_multiply_const_vxx_1_0 = blocks.multiply_const_vff((1.0/(tx_pkt_rate), ))
         self.blocks_multiply_const_vxx_1 = blocks.multiply_const_vff((-1.0/(tx_pkt_rate), ))
         self.blocks_multiply_const_vxx_0_0 = blocks.multiply_const_vcc((1.0/4, ))
         self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, "/users/lwei/GITfolder/wirelessacademy/BasicTx/wilabt/file_sent.txt", True)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_char*1, "/users/lwei/GITfolder/wirelessacademy/BasicCR/wilabt/file_received.txt", False)
+        self.blocks_file_sink_0.set_unbuffered(False)
         self.blocks_add_const_vxx_0 = blocks.add_const_vff((1.0, ))
         self.analog_random_source_x_1 = blocks.vector_source_b(map(int, numpy.random.randint(0, 256, 1000)), True)
 
@@ -232,9 +233,9 @@ class cr_application(gr.top_block, Qt.QWidget):
         self.connect((self.blocks_multiply_const_vxx_0_0, 0), (self.uhd_usrp_sink_1, 0))    
         self.connect((self.blocks_multiply_const_vxx_1, 0), (self.blocks_add_const_vxx_0, 0))    
         self.connect((self.blocks_multiply_const_vxx_1_0, 0), (self.qtgui_number_sink_0, 0))    
+        self.connect((self.crew_packet_decoder_cb_0, 0), (self.blocks_file_sink_0, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 1), (self.blocks_multiply_const_vxx_1, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 1), (self.blocks_multiply_const_vxx_1_0, 0))    
-        self.connect((self.crew_packet_decoder_cb_0, 0), (self.blocks_null_sink_0, 0))    
         self.connect((self.digital_gfsk_mod_0, 0), (self.blocks_multiply_const_vxx_0_0, 0))    
         self.connect((self.packet_gen_0, 0), (self.uhd_usrp_sink_0_0, 0))    
         self.connect((self.sync_blocks_0, 0), (self.crew_packet_decoder_cb_0, 0))    
@@ -273,17 +274,17 @@ class cr_application(gr.top_block, Qt.QWidget):
 
     def set_tx_pkt_rate(self, tx_pkt_rate):
         self.tx_pkt_rate = tx_pkt_rate
-        self.blocks_multiply_const_vxx_1_0.set_k((1.0/(self.tx_pkt_rate), ))
         self.blocks_multiply_const_vxx_1.set_k((-1.0/(self.tx_pkt_rate), ))
+        self.blocks_multiply_const_vxx_1_0.set_k((1.0/(self.tx_pkt_rate), ))
 
     def get_samp_rate(self):
         return self.samp_rate
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
+        self.uhd_usrp_sink_1.set_samp_rate(self.samp_rate*8)
         self.uhd_usrp_source_0_0.set_samp_rate(self.samp_rate)
         self.uhd_usrp_sink_0_0.set_samp_rate(self.samp_rate)
-        self.uhd_usrp_sink_1.set_samp_rate(self.samp_rate*8)
 
     def get_preamble_qpsk(self):
         return self.preamble_qpsk
