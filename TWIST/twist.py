@@ -2,16 +2,20 @@
 # -*- coding: utf-8 -*-
 
 """
-twist.py: Does really cool stuff
+twist.py: Command line interface to TWIST testbed
 
 Usage:
-   twist.py [options] [-q | -v] ([-n <nodeid>]... | --all)
+   twist.py [options] [-q | -v] ([-n <nodeid>]... | [--floor <floor>]... | --all )
    twist.py --config
 
-Options:
+Options (at least one of them is required):
    -i <image>, --image <image>     image that should be installed (exe file)
+   -s, --ssh                       setup ssh tunnel to given nodes
+
+Node options:
    -n <nodeid>, --node <nodeid>    node number(s)
    -a, --all                       use all available nodes
+   -f <floor>, --floor <floor>     use nodes from floor <floor>
 
 Other options:
    --session <file>    twist session cookie store [default: /tmp/twist_cookies]
@@ -35,12 +39,46 @@ import getpass
 import pickle
 from lxml import html
 from bs4 import BeautifulSoup
+
+from sh import ssh
 twist_url = "https://www.twist.tu-berlin.de:8000/"
-bin_url = "http://httpbin.org/post"
 log = logging.getLogger('twist')
 
+
+floor_nodes = {
+        "2": [ 195, 191, 223, 228, 213, 216, 192, 196, 229, 215,
+               222, 208, 220, 221, 212, 203, 194, 225, 209, 207,
+               224, 206, 205, 211, 230, 204, 240, 241],
+        "3": [ 101, 100, 103, 102, 86, 85, 87, 99, 83, 84, 80,
+               79, 81, 82, 189, 190, 193, 188, 198, 187, 199,
+               202, 200, 197, 218, 250, 251, 252, 262, 249, 186,
+               185, 231, 214],
+        "4": [ 153, 154, 151, 152, 12, 13, 10, 11, 149, 150, 147,
+               148, 88, 15, 89, 90, 145, 146, 144, 143, 92, 91, 93,
+               94, 139, 140, 141, 142, 96, 95, 97, 137, 138, 272]
+        }
+
 def login(login=None, password=None, cookie_file=None):
-	"""login() -> returns requests session to use in other functions"""
+	"""Login to the TWIST testbed
+
+	Sets up the session to the TWIST testbed. First it will try to restore it from
+	the ``cookie_file`` (and store it there afterwards), if not successful it will
+	look at provided arguments (if not None) will try to login. If no arguments
+	are provided it will ask for credentials through ``stdin``.
+
+
+	Args:
+		login (Optional[str]): User name.
+			Defaults to None.
+		password (Optional[str]): User password.
+			Defaults to None.
+		cookie_file(Optional[str]): Cookie file name with stored testbed session.
+			Defaults to None.
+
+	Returns:
+		requests.Session: An authenticated session to the TWIST testbed.
+			It can be used by all other functions
+	"""
 	if cookie_file is not None:
 		try:
 			with open(cookie_file) as f:
@@ -54,7 +92,7 @@ def login(login=None, password=None, cookie_file=None):
 
 	# Check session:
 	check = twist_session.get(twist_url, verify=False)
-	check_soup = BeautifulSoup(check.text)
+	check_soup = BeautifulSoup(check.text,"lxml")
 	check_soup = check_soup.find(id="menu")
 	for link in check_soup.find_all("a"):
 		if "login" in link["href"]:
@@ -71,10 +109,17 @@ def login(login=None, password=None, cookie_file=None):
 # def login
 
 def get_jobs(session):
-	"""get_jobs() -> array of all scheduled jobs"""
+	"""Returns a list of IDs of currently scheduled jobs.
+
+	Args:
+		session: Authenticated ``requests.Session`` with TWIST web interface.
+
+	Returns:
+		list: Currently scheduled job IDs. Empty if no jobs are scheduled.
+	"""
 	jobs_get = session.get(twist_url + "jobs", verify=False)
 	# Process result
-	jobs_soup = BeautifulSoup(jobs_get.text)
+	jobs_soup = BeautifulSoup(jobs_get.text, "lxml")
 	jobs_soup = jobs_soup.find(id="primaryContent")
 	headers = [header.string for header in jobs_soup.find_all("th")]
 	jobs = []
@@ -95,6 +140,14 @@ def get_jobs(session):
 # def get_jobs
 
 def get_active_jobid(session):
+	"""Returns ID of currently active job.
+
+	Args:
+		session: Authenticated ``requests.Session`` with TWIST web interface.
+
+	Returns:
+		int: Currently active job IDs. ``None`` if no jobs are scheduled.
+	"""
 	jobs = get_jobs(session)
 	# Search for active Telos job
 	try:
@@ -104,9 +157,16 @@ def get_active_jobid(session):
 	return active_job["Id"]
 
 def get_node_ids(session, job_id):
-	"""get_nodeids() -> docstring"""
+	"""Returns list of available telosb nodes in the currently active job.
+
+	Args:
+		session: Authenticated ``requests.Session`` with TWIST web interface.
+
+	Returns:
+		list: List of available telosb nodes.
+	"""
 	current_job = session.get(twist_url + "jobs/control?job_id=" + job_id)
-	job_soup = BeautifulSoup(current_job.text)
+	job_soup = BeautifulSoup(current_job.text, "lxml")
 	job_soup = job_soup.find(id="controlJob-res-p5-field")
 	job_soup = job_soup.find("textarea")
 	node_ids = [int(i) for i in job_soup.text.split(' ')]
@@ -115,7 +175,17 @@ def get_node_ids(session, job_id):
 
 
 def install(session, job_id, filename, nodes):
-	"""install() -> docstring"""
+	"""Installs given image on the nodes in the TWIST testbed.
+
+	Args:
+		session: Authenticated ``requests.Session`` with TWIST web interface.
+		job_id (int): ID of currently active job.
+		filename (str): File name of the image that should be installed on the nodes
+		nodes (list): List of node IDs on which the image should be installed
+
+	"""
+	allowed_nodes = get_node_ids(session, job_id)
+	nodes = list(set(allowed_nodes) & set(nodes))
 	data = {
 		"__nevow_form__": "controlJob",
 		"job_id": job_id,
@@ -131,6 +201,33 @@ def install(session, job_id, filename, nodes):
 	log.info(install.text)
 # def install
 
+_ssh_out_aggredate = ""
+def _ssh_interact(char, stdin):
+	""" Internal function to interact with ssh session """
+	global _ssh_out_aggredate
+	_ssh_out_aggredate += char
+	if _ssh_out_aggredate.endswith("password: "):
+		print "Provide ssh password: "
+		passwd = getpass.getpass()
+		stdin.put("neniadgosp\n")
+
+def ssh_tunnel(nodes):
+	""" Sets up an SSH tunnel to a given set of nodes
+
+	Args:
+		nodes (list): List of node IDs on which the image should be installed
+
+	Note: It will prompt for ssh password.
+
+		DO NOT EXPECT THIS FUNCTION TO EXIT.
+	"""
+	args = ["-nNxT4"]
+	for node in nodes:
+		args.append("-L")
+		args.append("9{id:03d}:localhost:9{id:03d}".format(id=node))
+	args.append("twistextern@www.twist.tu-berlin.de")
+	ssh(args, _out=_ssh_interact, _out_bufsize=0, _tty_in=True)
+	ssh.wait()
 
 def main(args):
 	"""Run the code for twist"""
@@ -141,10 +238,16 @@ def main(args):
 	jobid = get_active_jobid(session)
 	if args["--all"]:
 		nodeids = get_node_ids(session, jobid)
-	else:
-		nodeids = args["--node"]
-	install(session, jobid, args['--image'], nodeids)
-	# twist_install(None, 20, "source/build/telosb/main.exe", "229")
+	elif args["--node"]:
+		nodeids = [int(i) for i in args["--node"]]
+	elif args["--floor"]:
+		nodeids = []
+		for f in args["--floor"]:
+			nodeids.extend(floor_nodes[f])
+	if args["--image"]:
+		install(session, jobid, args['--image'], nodeids)
+	if args["--ssh"]:
+		ssh_tunnel(nodeids)
 # def main
 
 
