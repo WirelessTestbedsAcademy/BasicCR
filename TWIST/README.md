@@ -15,17 +15,31 @@ Requirements
 
 It is possible to run the Docker image build from attached Dockerfile in this repository
 
+    docker build -t wta/basiccr-twist .
+    docker run -itP --rm wta/basiccr-twist bash
+
 
 Execution of Experiment
 -----------------------
 
-- Compile code for sensor nodes:
+1. Compile code for sensor nodes:
 
         cd sensorapp
         make telosb
-        cd radioapp
+
+        cd ../radioapp
         make telosb
 
-- Install both on the testbed (for testbed access and basic usage refer to [TWIST documentation](https://www.twist.tu-berlin.de/tutorials/twist-getting-started.html))
+2. Install both on the testbed (for testbed access and basic usage refer to [TWIST documentation](https://www.twist.tu-berlin.de/tutorials/twist-getting-started.html))
 
     Additionally it is possible to use `twist.py` interface to install sensor node images on the nodes. This method still requires node reservation on the testbed via web interface.
+
+        cd ..
+        ./twist.py -i ./radioapp/build/telosb/main.exe -a
+        ./twist.py -i ./sensorapp/build/telosb/main.exe -n 151
+
+3. Connect to SSH tunnels
+
+        ./twist.py -s -a
+
+4. Run the application
