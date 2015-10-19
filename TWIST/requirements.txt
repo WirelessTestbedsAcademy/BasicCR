@@ -1,0 +1,5 @@
+lxml
+docopt
+requests
+beautifulsoup4
+sh
