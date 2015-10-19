@@ -1,7 +1,6 @@
 SpectrumMonitorApp
 ==================
 
-
 This application periodically samples RF noise power in the 2.4 GHz band on a
 set of user-defined frequencies (`FREQUENCY_VECTOR` in `spectrummonitor.h`) and
 continuously outputs the result over the USB interface. Each value represents
@@ -16,30 +15,38 @@ During operation, LED 2 (blue) should toggle periodically.
 Whenever the app receives any message from the serial line, it broadcasts this
 message out over the radio (and toggles it's green LED).
 
-Optionally, you can set CTRL_CHANNEL_FREQUENCY_VECTOR (in spectrummonitor.h).
-This variable represents a list of control channels, which the application will
-listen briefly in between the sweeps. Whenever it receives an appropriate
-message (a beacon from a BAN) on one of the control channels, the application
-will forward this message over the USB interface. By default, however,
-CTRL_CHANNEL_FREQUENCY_VECTOR is empty, i.e. the app will not listen for
-messages on control channels; it will only sample RF noise.
-
 The RED LED should never turn on, it indicates an error.
 
 Usage:
 
-1. Install the image on a telosb node:
+0. Make sure you have TinyOS toolchain installed on the system
 
-        make telosb install
-        # or
-        make telosb install bsl,/dev/ttyUSB0
+    You can use provided Dockerfile to create own docker image
 
+        docker build -t wta/sensingtwist .
 
-2. Start a serialforwarder and python test script:
+1. Build the image on a telosb node:
 
-        java net.tinyos.sf.SerialForwarder -comm serial@/dev/ttyUSB0:115200 -no-gui -port 9002
+        make telosb
 
-    ... and run the python test program to see the results from the node:
+2. Install the code on the motes
 
-        python test.py
+    a. TWIST testbed (on all nodes, refer to `./twist.py --help` for more information):
 
+            ./twist.py -i ./build/telosb/main.exe -a
+
+    b. You can also install it on the local mote using:
+
+            make telosb reinstall bsl,/dev/ttyUSB0
+
+2. Start listening for the spectrum data:
+
+    a. On the TWIST testbed you need to start SSH tunnels and connect to it:
+
+            ./twit.py -a -s
+            # In second console/screen
+            ./sensorapp.py localhost:9151
+
+    b. Running locally it is enough to point to USB interface
+
+            ./sensorapp.py /dev/ttyUSB0
