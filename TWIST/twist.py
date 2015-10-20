@@ -11,6 +11,7 @@ Usage:
 Options (at least one of them is required):
    -i <image>, --image <image>     image that should be installed (exe file)
    -s, --ssh                       setup ssh tunnel to given nodes
+   -p <pass>                       ssh password
 
 Node options:
    -n <nodeid>, --node <nodeid>    node number(s)
@@ -201,17 +202,20 @@ def install(session, job_id, filename, nodes):
 	log.info(install.text)
 # def install
 
-_ssh_out_aggredate = ""
-def _ssh_interact(char, stdin):
+__ssh_pass__ = None
+__ssh_out_aggredate__ = ""
+def __ssh_interact__(char, stdin):
 	""" Internal function to interact with ssh session """
-	global _ssh_out_aggredate
-	_ssh_out_aggredate += char
-	if _ssh_out_aggredate.endswith("password: "):
-		print "Provide ssh password: "
-		passwd = getpass.getpass()
-		stdin.put("neniadgosp\n")
+	global __ssh_out_aggredate__
+	global __ssh_pass__
+	__ssh_out_aggredate__ += char
+	if __ssh_out_aggredate__.endswith("password: "):
+		if __ssh_pass__ is None:
+			print "Provide ssh password: "
+			__ssh_pass__ = getpass.getpass()
+		stdin.put("{}\n".format(__ssh_pass__))
 
-def ssh_tunnel(nodes):
+def ssh_tunnel(nodes, passwd=None):
 	""" Sets up an SSH tunnel to a given set of nodes
 
 	Args:
@@ -221,12 +225,15 @@ def ssh_tunnel(nodes):
 
 		DO NOT EXPECT THIS FUNCTION TO EXIT.
 	"""
+	if passwd is not None:
+		global __ssh_pass__
+		__ssh_pass__ = passwd
 	args = ["-nNxT4"]
 	for node in nodes:
 		args.append("-L")
 		args.append("9{id:03d}:localhost:9{id:03d}".format(id=node))
 	args.append("twistextern@www.twist.tu-berlin.de")
-	ssh(args, _out=_ssh_interact, _out_bufsize=0, _tty_in=True)
+	ssh(args, _out=__ssh_interact__, _out_bufsize=0, _tty_in=True)
 	ssh.wait()
 
 def main(args):
@@ -247,7 +254,7 @@ def main(args):
 	if args["--image"]:
 		install(session, jobid, args['--image'], nodeids)
 	if args["--ssh"]:
-		ssh_tunnel(nodeids)
+		ssh_tunnel(nodeids,args["-p"])
 # def main
 
 
