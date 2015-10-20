@@ -21,22 +21,23 @@
 
 // $Id: NodeIfC.nc,v 1.6 2008/09/25 04:08:09 regehr Exp $
 
-//#define NEW_PRINTF_SEMANTICS
-//#include "printf.h"
+#define NEW_PRINTF_SEMANTICS
+#include "printf.h"
 
 configuration NodeIfC {
 }
 implementation {
   components MainC, NodeIfP, LedsC;
-  components ActiveMessageC as Radio, SerialActiveMessageC as Serial;
+  components ActiveMessageC as Radio;
   components CC2420ActiveMessageC;
+  components SerialActiveMessageC as Serial;
 
   MainC.Boot <- NodeIfP;
 
   NodeIfP.RadioControl -> Radio;
   NodeIfP.SerialControl -> Serial;
 
-  NodeIfP.UartSend -> Serial;
+  NodeIfP.UartSend -> Serial.AMSend;
   NodeIfP.UartReceive -> Serial.Receive;
   NodeIfP.UartPacket -> Serial;
   NodeIfP.UartAMPacket -> Serial;
@@ -67,6 +68,17 @@ implementation {
   // To let the changes take effect use these:
   NodeIfP.SRXON -> Spi.SRXON;
   NodeIfP.SRFOFF -> Spi.SRFOFF;
+  components PrintfC;
 
+#ifdef CC2420_CCA_OVERRIDE
+  components CC2420ActiveMessageC;
+  NodeIfP.CcaOverride -> CC2420ActiveMessageC.RadioBackoff[AM_RADIO_MSG];
+#endif
 
+  components new TimerMilliC() as TimerR;
+  components new TimerMilliC() as TimerG;
+  components new TimerMilliC() as TimerB;
+  NodeIfP.TimerR -> TimerR;
+  NodeIfP.TimerG -> TimerG;
+  NodeIfP.TimerB -> TimerB;
 }

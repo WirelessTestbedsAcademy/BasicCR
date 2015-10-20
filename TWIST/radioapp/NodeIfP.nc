@@ -33,38 +33,38 @@
 #include "AM.h"
 #include "Serial.h"
 
-//#include "printf.h"
-	#define printf(...) ;
-	#define printfflush(...) ;
+#include "printf.h"
+// #define printf(...) ;
+// #define printfflush(...) ;
 
 #define RSSI_OFFSET (-45)
 #include "NodeIfMessages.h"
 
 
 module NodeIfP @safe() {
-  uses {
-    interface Boot;
-    interface SplitControl as SerialControl;
-    interface SplitControl as RadioControl;
+	uses {
+		interface Boot;
+		interface SplitControl as SerialControl;
+		interface SplitControl as RadioControl;
 
-    interface AMSend as UartSend[am_id_t id];
-    interface Receive as UartReceive[am_id_t id];
-    interface Packet as UartPacket;
-    interface AMPacket as UartAMPacket;
+		interface AMSend as UartSend[am_id_t id];
+		interface Receive as UartReceive[am_id_t id];
+		interface Packet as UartPacket;
+		interface AMPacket as UartAMPacket;
 
-    interface AMSend as RadioSend[am_id_t id];
-    interface Receive as RadioReceive[am_id_t id];
-    interface Receive as RadioSnoop[am_id_t id];
-    interface Packet as RadioPacket;
-    interface AMPacket as RadioAMPacket;
+		interface AMSend as RadioSend[am_id_t id];
+		interface Receive as RadioReceive[am_id_t id];
+		interface Receive as RadioSnoop[am_id_t id];
+		interface Packet as RadioPacket;
+		interface AMPacket as RadioAMPacket;
 
-    interface CC2420Packet;
+		interface CC2420Packet;
 
-    interface Leds;
+		interface Leds;
 
-  }
+	}
 
-  uses {
+	uses {
 	interface GeneralIO as CSN;
 
 	interface Resource as SpiResource;
@@ -80,319 +80,300 @@ module NodeIfP @safe() {
 
 	interface CC2420Strobe as SRFOFF;
 	interface CC2420Strobe as SRXON;
-  }
+
+#ifdef CC2420_CCA_OVERRIDE
+	interface RadioBackoff as CcaOverride;
+#endif
+
+	interface Timer<TMilli> as TimerR;
+	interface Timer<TMilli> as TimerG;
+	interface Timer<TMilli> as TimerB;
+	}
 
 }
 
-implementation
-{
+implementation {
 
-  enum { APPID = 132 };
+	enum { APPID = 132 };
 
-  norace uint16_t m_tx_power = CC2420_DEF_RFPOWER;
-  norace uint16_t curChannel = CC2420_DEF_CHANNEL;
+	norace uint16_t m_tx_power = CC2420_DEF_RFPOWER;
+	norace uint16_t curChannel = CC2420_DEF_CHANNEL;
 
-  message_t pkt;
+	message_t pkt;
 
 
-  /* Prototypes */
-  message_t *addUartQ   (message_t *);
-  message_t *addRadioQ  (message_t *);
-  uint16_t setTxPower   (uint8_t);
-  uint16_t setTxChannel (uint16_t);
-  uint16_t getTxChannel ();
-  uint16_t getTxPower   ();
-  uint16_t ch2freq      (uint16_t);
+	/* Prototypes */
+	message_t *addUartQ   (message_t *);
+	message_t *addRadioQ  (message_t *);
+	uint16_t setTxPower   (uint8_t);
+	uint16_t setTxChannel (uint16_t);
+	uint16_t getTxChannel ();
+	uint16_t getTxPower   ();
+	uint16_t ch2freq      (uint16_t);
 
-  message_t  uartQueueBufs[UART_QUEUE_LEN];
-  message_t  * ONE_NOK uartQueue[UART_QUEUE_LEN];
-  uint8_t    uartIn, uartOut;
-  bool       uartBusy, uartFull;
+	message_t  uartQueueBufs[UART_QUEUE_LEN];
+	message_t  * ONE_NOK uartQueue[UART_QUEUE_LEN];
+	uint8_t    uartIn, uartOut;
+	bool       uartBusy, uartFull;
 
-  message_t  radioQueueBufs[RADIO_QUEUE_LEN];
-  message_t  * ONE_NOK radioQueue[RADIO_QUEUE_LEN];
-  uint8_t    radioIn, radioOut;
-  bool       radioBusy, radioFull;
+	message_t  radioQueueBufs[RADIO_QUEUE_LEN];
+	message_t  * ONE_NOK radioQueue[RADIO_QUEUE_LEN];
+	uint8_t    radioIn, radioOut;
+	bool       radioBusy, radioFull;
 
-  task void uartSendTask();
-  task void radioSendTask();
+	task void uartSendTask();
+	task void radioSendTask();
 
-  void dropBlink() {
-    call Leds.led2Toggle();
-  }
-
-  void failBlink() {
-    call Leds.led2Toggle();
-  }
-
-  event void Boot.booted() {
-    uint8_t i;
-
-    for (i = 0; i < UART_QUEUE_LEN; i++)
-      uartQueue[i] = &uartQueueBufs[i];
-    uartIn = uartOut = 0;
-    uartBusy = FALSE;
-    uartFull = TRUE;
-
-    for (i = 0; i < RADIO_QUEUE_LEN; i++)
-      radioQueue[i] = &radioQueueBufs[i];
-    radioIn = radioOut = 0;
-    radioBusy = FALSE;
-    radioFull = TRUE;
-
-    call RadioControl.start();
-    call SerialControl.start();
-  }
-
-  event void RadioControl.startDone(error_t error) {
-    if (error == SUCCESS) {
-      radioFull = FALSE;
-    }
-  }
-
-  event void SerialControl.startDone(error_t error) {
-    if (error == SUCCESS) {
-      uartFull = FALSE;
-    }
-  }
-
-  event void SerialControl.stopDone(error_t error) {}
-  event void RadioControl.stopDone(error_t error) {}
-
-  uint8_t count = 0;
-
-  message_t* ONE receive(message_t* ONE msg, void* payload, uint8_t len);
-
-  event message_t *RadioSnoop.receive[am_id_t id](message_t *msg, void *payload, uint8_t len) {
-    return receive(msg, payload, len);
-  }
-
-  event message_t *RadioReceive.receive[am_id_t id](message_t *msg, void *payload, uint8_t len) {
-    return receive(msg, payload, len);
-  }
-
-  message_t* receive(message_t *msg, void *payload, uint8_t len) {
-    message_t *ret = msg;
-
-	nodeifMsg *incoming = (nodeifMsg*)(call RadioPacket.getPayload(ret, (int) NULL));
-
-	if (incoming->appid != APPID) return ret;
-	incoming->receiverid = TOS_NODE_ID;
-	incoming->nodeid = TOS_NODE_ID;
-	incoming->rssi = call CC2420Packet.getRssi(ret) + RSSI_OFFSET;
-	incoming->lqi = call CC2420Packet.getLqi(ret);
-	// incoming->txpower = m_tx_power; // bu uartReceive'de gönderici tarafindan set edilsin
-	incoming->channel = curChannel; // ekle.
-	ret = addUartQ(msg);
-
-    return ret;
-  }
-
-  task void uartSendTask() {
-    uint8_t len;
-    am_id_t id;
-    am_addr_t addr, src;
-    message_t* msg;
-    atomic
-      if (uartIn == uartOut && !uartFull)
-	{
-	  uartBusy = FALSE;
-	  return;
+	void infoBlink() {
+		call Leds.led1Toggle(); // D5 Green on telosb
+		call TimerG.startOneShot(50);
 	}
 
-    msg = uartQueue[uartOut];
-    len = sizeof(nodeifMsg);
-    id = call RadioAMPacket.type(msg);
-    addr = call RadioAMPacket.destination(msg);
-    src = call RadioAMPacket.source(msg);
-    call UartPacket.clear(msg);
-    call UartAMPacket.setSource(msg, src);
-
-    if (call UartSend.send[id](addr, uartQueue[uartOut], len) == SUCCESS)
-      call Leds.led1Toggle();
-    else
-      {
-	failBlink();
-	post uartSendTask();
-      }
-  }
-
-  event void UartSend.sendDone[am_id_t id](message_t* msg, error_t error) {
-    if (error != SUCCESS)
-      failBlink();
-    else
-      atomic
-	if (msg == uartQueue[uartOut])
-	  {
-	    if (++uartOut >= UART_QUEUE_LEN)
-	      uartOut = 0;
-	    if (uartFull)
-	      uartFull = FALSE;
-	  }
-    post uartSendTask();
-  }
-
-  event message_t *UartReceive.receive[am_id_t id](message_t *msg,
-						   void *payload,
-						   uint8_t len) {
-    message_t *ret = msg;
-    uint16_t value;
-
-	nodeifMsg *incoming = (nodeifMsg*)(call RadioPacket.getPayload(msg, (int) NULL));
-
-	if (incoming->appid != APPID) // || incoming->nodeid == TOS_NODE_ID )// || incoming->senderid == TOS_NODE_ID )
-			return ret;
-
-	incoming->nodeid = TOS_NODE_ID;
-	switch(incoming->pcktype) {
-		case SETTX:
-			setTxPower(incoming->value);
-			value = getTxPower();
-			incoming->value = value;
-			ret = addUartQ(msg);
-			break;
-		case GETTX:
-			value = getTxPower();
-			incoming->value = value;
-			ret = addUartQ(msg);
-			break;
-		case SETFREQ:
-			setTxChannel(incoming->value);
-			value = getTxChannel();
-			incoming->value = value;
-			ret = addUartQ(msg);
-			break;
-		case GETFREQ:
-			value = getTxChannel();
-			incoming->value = value;
-			ret = addUartQ(msg);
-			break;
-		case DATA:
-		    incoming->senderid = TOS_NODE_ID;
-		    incoming->txpower = m_tx_power;
-		    incoming->channel = curChannel;
-			ret = addRadioQ(msg);	// ONLY DATA MESSAGE IS SENT TO RADIO
-			break;
-		case IDQUERY:
-		    incoming->nodeid = TOS_NODE_ID;
-		    ret = addUartQ(msg);
-			break;
-		default:
-			break;
-	} // switch
-
-    return ret;
-  }
-
-  /* Adds the message to the Uart Queue
-   * Returns a message pointer
-   */
-  message_t *addUartQ (message_t *tMsg) {
-    message_t *ret = tMsg;
-
-    atomic {
-		if (!uartFull)
-		{
-		  ret = uartQueue[uartIn];
-		  uartQueue[uartIn] = tMsg;
-
-		  uartIn = (uartIn + 1) % UART_QUEUE_LEN;
-
-		  if (uartIn == uartOut)
-			uartFull = TRUE;
-
-		  if (!uartBusy)
-			{
-			  post uartSendTask();
-			  uartBusy = TRUE;
-			}
-		}
-		else {
-			dropBlink();
-		}
-	} // atomic
-
-	return ret;
-  }
-
-  /* Adds the message to the radio Queue
-   * Returns a message pointer
-   */
-  message_t *addRadioQ (message_t *tMsg) {
-    message_t *ret = tMsg;
-
-  	atomic {
-		if (!radioFull)
-		{
-		  ret = radioQueue[radioIn];
-		  radioQueue[radioIn] = tMsg;
-		  if (++radioIn >= RADIO_QUEUE_LEN)
-			radioIn = 0;
-		  if (radioIn == radioOut)
-			radioFull = TRUE;
-
-		  if (!radioBusy)
-			{
-			  post radioSendTask();
-			  radioBusy = TRUE;
-			}
-		}
-		else
-		dropBlink();
-	} // atomic
-
-	return ret;
-  }
-
-
-  task void radioSendTask() {
-    uint8_t len;
-    am_id_t id;
-    am_addr_t addr,source;
-    message_t* msg;
-
-    atomic
-      if (radioIn == radioOut && !radioFull)
-	{
-	  radioBusy = FALSE;
-	  return;
+	event void TimerG.fired() {
+		call Leds.led1Toggle(); // D5 Green on telosb
 	}
 
-    msg = radioQueue[radioOut];
-    len = sizeof(nodeifMsg);
-    addr = call UartAMPacket.destination(msg);
-    source = call UartAMPacket.source(msg);
-    id = call UartAMPacket.type(msg);
+	void warningBlink() {
+		call Leds.led2Toggle(); // D6 Blue on telosb
+		call TimerB.startOneShot(50);
+	}
 
-    call RadioPacket.clear(msg);
-    call RadioAMPacket.setSource(msg, source);
+	event void TimerB.fired() {
+		call Leds.led2Toggle(); // D6 Blue on telosb
+	}
 
-    if (call RadioSend.send[id](addr, msg, len) == SUCCESS)
-      call Leds.led2Toggle();
-    else
-      {
-	failBlink();
-	post radioSendTask();
-      }
-  }
+	void failBlink() {
+		call Leds.led0Toggle(); // D4 Red on telosb
+		call TimerR.startOneShot(50);
+	}
 
-  event void RadioSend.sendDone[am_id_t id](message_t* msg, error_t error) {
-    if (error != SUCCESS)
-      failBlink();
-    else
-      atomic
-	if (msg == radioQueue[radioOut])
-	  {
-	    if (++radioOut >= RADIO_QUEUE_LEN)
-	      radioOut = 0;
-	    if (radioFull)
-	      radioFull = FALSE;
-	  }
+	event void TimerR.fired() {
+		call Leds.led0Toggle(); // D4 Red on telosb
+	}
 
-    post radioSendTask();
-  }
+	event void Boot.booted() {
+		uint8_t i;
 
-  uint16_t getTxChannel () {
+		for (i = 0; i < UART_QUEUE_LEN; i++)
+			uartQueue[i] = &uartQueueBufs[i];
+		uartIn = uartOut = 0;
+		uartBusy = FALSE;
+		uartFull = TRUE;
+
+		for (i = 0; i < RADIO_QUEUE_LEN; i++)
+			radioQueue[i] = &radioQueueBufs[i];
+		radioIn = radioOut = 0;
+		radioBusy = FALSE;
+		radioFull = TRUE;
+
+		call SerialControl.start();
+		call RadioControl.start();
+	}
+
+	event void RadioControl.startDone(error_t error) {
+		if (error == SUCCESS) {
+			radioFull = FALSE;
+		}
+	}
+
+	event void SerialControl.startDone(error_t error) {
+		if (error == SUCCESS) {
+			uartFull = FALSE;
+		}
+	}
+
+	event void SerialControl.stopDone(error_t error) {}
+	event void RadioControl.stopDone(error_t error) {}
+
+	message_t* ONE receive(message_t* ONE msg, void* payload, uint8_t len);
+
+	event message_t *RadioSnoop.receive[am_id_t id](message_t *msg, void *payload, uint8_t len) {
+		message_t *ret = msg;
+		ret = addUartQ(msg);
+		return ret;
+	}
+
+	event message_t *RadioReceive.receive[am_id_t id](message_t *msg, void *payload, uint8_t len) {
+		message_t *ret = msg;
+		ret = addUartQ(msg);
+		return ret;
+	}
+
+	task void uartSendTask() {
+		uint8_t len;
+		am_id_t id;
+		am_addr_t addr, src;
+		message_t* msg;
+		error_t ecode;
+		atomic {
+			if (uartIn == uartOut && !uartFull) {
+				uartBusy = FALSE;
+				return;
+			}
+		}
+
+		msg = uartQueue[uartOut];
+		len = call RadioPacket.payloadLength(msg);
+		id = call RadioAMPacket.type(msg);
+		addr = call RadioAMPacket.destination(msg);
+		src = call RadioAMPacket.source(msg);
+		call RadioPacket.clear(msg);
+		call UartAMPacket.setSource(msg, src);
+		ecode = call UartSend.send[id](addr, uartQueue[uartOut], len);
+		if (ecode == SUCCESS) {
+			infoBlink();
+		}	else {
+			failBlink();
+			post uartSendTask();
+		}
+	}
+
+	event void UartSend.sendDone[am_id_t id](message_t* msg, error_t error) {
+		if (error != SUCCESS) {
+			failBlink();
+		} else {
+			atomic {
+				if (msg == uartQueue[uartOut]) {
+					if (++uartOut >= UART_QUEUE_LEN)
+						uartOut = 0;
+					if (uartFull)
+						uartFull = FALSE;
+				}
+			}
+		}
+		post uartSendTask();
+	}
+
+	event message_t *UartReceive.receive[am_id_t id](message_t *msg,
+							 void *payload,
+							 uint8_t len) {
+		message_t *ret = msg;
+
+		if (id == AM_RADIO_CONF_MSG){
+			radio_conf_msg_t *incoming = (radio_conf_msg_t*)(call UartPacket.getPayload(msg, (int) NULL));
+
+			incoming->nodeid = TOS_NODE_ID;
+			if (0 < incoming->txpower && incoming->txpower <= 31) {
+				setTxPower(incoming->txpower);
+			}
+			if (11 <= incoming->channel && incoming->channel <= 16) {
+				setTxChannel(incoming->channel);
+			}
+			incoming->txpower = getTxPower();
+			incoming->channel = getTxChannel();
+			// ret = addUartQ(msg);
+		} else {
+			failBlink();
+			ret = addRadioQ(msg);
+		}
+
+		return ret;
+	}
+
+	/* Adds the message to the Uart Queue
+	 * Returns a message pointer
+	 */
+	message_t *addUartQ (message_t *tMsg) {
+		message_t *ret = tMsg;
+
+		atomic {
+			if (!uartFull) {
+				ret = uartQueue[uartIn];
+				uartQueue[uartIn] = tMsg;
+
+				uartIn = (uartIn + 1) % UART_QUEUE_LEN;
+
+				if (uartIn == uartOut)
+					uartFull = TRUE;
+
+				if (!uartBusy) {
+					post uartSendTask();
+					uartBusy = TRUE;
+				}
+			} else {
+				failBlink();
+			}
+		} // atomic
+
+	return ret;
+	}
+
+	/* Adds the message to the radio Queue
+	 * Returns a message pointer
+	 */
+	message_t *addRadioQ (message_t *tMsg) {
+		message_t *ret = tMsg;
+
+		atomic {
+			if (!radioFull)	{
+				ret = radioQueue[radioIn];
+				radioQueue[radioIn] = tMsg;
+				if (++radioIn >= RADIO_QUEUE_LEN)
+					radioIn = 0;
+				if (radioIn == radioOut)
+					radioFull = TRUE;
+
+				if (!radioBusy) {
+					post radioSendTask();
+					radioBusy = TRUE;
+				}
+			}	else {
+				failBlink();
+			}
+		} // atomic
+
+	return ret;
+	}
+
+
+	task void radioSendTask() {
+		uint8_t len;
+		am_id_t id;
+		am_addr_t addr,source;
+		message_t* msg;
+
+		atomic {
+			if (radioIn == radioOut && !radioFull) {
+				radioBusy = FALSE;
+				return;
+			}
+		}
+
+		msg = radioQueue[radioOut];
+		len = call UartPacket.payloadLength(msg);
+		addr = call UartAMPacket.destination(msg);
+		source = call UartAMPacket.source(msg);
+		id = call UartAMPacket.type(msg);
+
+		call RadioPacket.clear(msg);
+		call RadioAMPacket.setSource(msg, source);
+
+		if (call RadioSend.send[id](addr, msg, len) == SUCCESS) {
+			infoBlink();
+		}	else {
+			failBlink();
+			post radioSendTask();
+		}
+	}
+
+	event void RadioSend.sendDone[am_id_t id](message_t* msg, error_t error) {
+		if (error != SUCCESS) {
+			failBlink();
+		} else {
+			atomic {
+				if (msg == radioQueue[radioOut]) {
+					if (++radioOut >= RADIO_QUEUE_LEN)
+						radioOut = 0;
+					if (radioFull)
+						radioFull = FALSE;
+				}
+			}
+		}
+
+		post radioSendTask();
+	}
+
+	uint16_t getTxChannel() {
 		uint16_t channel = 0;
 		uint16_t freq = 0;
 		uint16_t rd_channel = 0;
@@ -400,12 +381,12 @@ implementation
 		error_t error = call SpiResource.immediateRequest();
 
 		if ( error == SUCCESS ) {
-			atomic{
+			atomic {
 				do {
 					call CSN.clr();
 					call FSCTRL.read(&rd_channel);
 					call CSN.set();
-		       } while (rd_channel & 0x1000);
+				} while (rd_channel & 0x1000);
 			}
 		}
 
@@ -415,22 +396,21 @@ implementation
 		freq = (rd_channel & 0x03FF) + 2048;
 		channel = (freq - 2405)/5 + 11;
 
-
 		return channel;
-  }
+	}
 
-  uint16_t ch2freq (uint16_t tch) {
-  		return 2405 + 5*(tch-11);
-  }
+	uint16_t ch2freq (uint16_t tch) {
+		return 2405 + 5*(tch-11);
+	}
 
-  uint16_t getTxPower () {
+	uint16_t getTxPower() {
 		uint16_t power = m_tx_power;
 		uint16_t rd_power;
 
 		error_t error = call SpiResource.immediateRequest();
 
 		if ( error == SUCCESS ) {
-			atomic{
+			atomic {
 					call CSN.clr();
 					call TXCTRL.read(&rd_power);
 					call CSN.set();
@@ -439,11 +419,10 @@ implementation
 		}
 
 		call SpiResource.release();
-
 		return power;
-  }
+	}
 
-  uint16_t setTxPower(uint8_t tpower) {
+	uint16_t setTxPower(uint8_t tpower) {
 		uint8_t tx_power = tpower;
 		uint16_t wr_power = 0;
 		uint16_t rd_power = 1;
@@ -451,8 +430,7 @@ implementation
 
 		error_t error = call SpiResource.immediateRequest();
 
-		if (error != SUCCESS)
-		{
+		if (error != SUCCESS) {
 			return 0xFF;
 		}
 
@@ -461,16 +439,16 @@ implementation
 		call CSN.set();
 
 		if ( !tx_power ) {
-		  tx_power = CC2420_DEF_RFPOWER;
+			tx_power = CC2420_DEF_RFPOWER;
 		}
-		printf ("Now will set power to %d\n", tx_power); printfflush();
+
 		atomic{
 			call CSN.clr();
 			if ( m_tx_power != tx_power ) {
-			   wr_power = ( 2 << CC2420_TXCTRL_TXMIXBUF_CUR ) |
-								 ( 3 << CC2420_TXCTRL_PA_CURRENT ) |
-								 ( 1 << CC2420_TXCTRL_RESERVED ) |
-								 ( (tx_power & 0x1F) << CC2420_TXCTRL_PA_LEVEL );
+				wr_power = ( 2 << CC2420_TXCTRL_TXMIXBUF_CUR ) |
+					( 3 << CC2420_TXCTRL_PA_CURRENT ) |
+					( 1 << CC2420_TXCTRL_RESERVED ) |
+					( (tx_power & 0x1F) << CC2420_TXCTRL_PA_LEVEL );
 
 				status = call TXCTRL.write( wr_power );
 			}
@@ -484,27 +462,16 @@ implementation
 
 		call SpiResource.release();
 
-		printf("Written: %d(%X), Read:%d(%X)", wr_power, wr_power, rd_power, rd_power); printfflush();
-
-		if ( rd_power != wr_power)
-			call Leds.led0On();
-		else {
-			call Leds.led0Off();
-
-			if (m_tx_power != tx_power) {
-				printf("\t M_TX_POWER is set to %d from %d\n", tx_power, m_tx_power);
-				printfflush();
-			}
-
+		if ( rd_power != wr_power) {
+			warningBlink();
+		} else {
 			m_tx_power = tx_power;
 		}
-		printfflush();
 
 		return m_tx_power;
-
 	}
 
-	uint16_t setTxChannel (uint16_t tChannel) {
+	uint16_t setTxChannel(uint16_t tChannel) {
 		uint8_t channel = tChannel;
 		uint16_t wr_channel = 0, rd_channel = 0;
 
@@ -512,8 +479,7 @@ implementation
 
 		error_t error = call SpiResource.immediateRequest();
 
-		if (error != SUCCESS)
-		{
+		if (error != SUCCESS)	{
 			return 0xFF;
 		}
 
@@ -528,20 +494,20 @@ implementation
 		printf("set to channel=%d curChannel=%d\n",channel, curChannel);
 
 		atomic {
-			    call CSN.clr();
-			    call FSCTRL.read(&wr_channel);
-			    wr_channel = (wr_channel & 0xFE00) | ( ( (channel - 11)*5+357 ) << CC2420_FSCTRL_FREQ );
-			    call CSN.set();
-			    call CSN.clr();
-				//wr_channel = ( 1 << CC2420_FSCTRL_LOCK_THR ) | ( ( (channel - 11)*5+357 ) << CC2420_FSCTRL_FREQ );
-				status = call FSCTRL.write( wr_channel );
-				call CSN.set();
+			call CSN.clr();
+			call FSCTRL.read(&wr_channel);
+			wr_channel = (wr_channel & 0xFE00) | ( ( (channel - 11)*5+357 ) << CC2420_FSCTRL_FREQ );
+			call CSN.set();
+			call CSN.clr();
+			//wr_channel = ( 1 << CC2420_FSCTRL_LOCK_THR ) | ( ( (channel - 11)*5+357 ) << CC2420_FSCTRL_FREQ );
+			status = call FSCTRL.write( wr_channel );
+			call CSN.set();
 
 			do {
-			    call CSN.clr();
+				call CSN.clr();
 				call FSCTRL.read(&rd_channel);
 				call CSN.set();
-	       } while (rd_channel & 0x1000);
+			} while (rd_channel & 0x1000);
 		}
 
 		call CSN.clr();
@@ -551,8 +517,7 @@ implementation
 		call SpiResource.release();
 
 		if (rd_channel != wr_channel) {
-			printf("Problem: rd_channel=%d(0x%X) != wr_channel=%d(0x%X) && status = 0x%X SPI.owner=%d\n",rd_channel, rd_channel, wr_channel, wr_channel, status, call SpiResource.isOwner());
-			//call Leds.led0On();
+			warningBlink();
 		}
 		else {
 			curChannel = channel;
@@ -563,7 +528,12 @@ implementation
 	}
 
 	event void SpiResource.granted() {
-			printf("Request Granted\n"); printfflush();
 	}
+
+#ifdef CC2420_CCA_OVERRIDE
+	async event void CcaOverride.requestCca(message_t *msg) {call CcaOverride.setCca(FALSE);}
+	async event void CcaOverride.requestInitialBackoff(message_t *msg) {}
+	async event void CcaOverride.requestCongestionBackoff(message_t *msg) {}
+#endif
 
 }

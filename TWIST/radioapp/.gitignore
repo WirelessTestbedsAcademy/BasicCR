@@ -1,4 +1,4 @@
 build/
 *.pyc
-NodeIfMsg.py
-RssiMsg.py
+radio_conf_msg.py
+radio_msg.py

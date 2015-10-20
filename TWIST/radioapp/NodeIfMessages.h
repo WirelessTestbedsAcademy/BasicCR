@@ -28,35 +28,40 @@
 #define NODEIFMESSAGES_H__
 
 enum {
-  AM_NODEIFMSG = 0x13
+  AM_RADIO_CONF_MSG = 113,
+  AM_RADIO_MSG = 114,
 };
 
-enum {
-  SETTX = 0,
-  GETTX = 1,
-  SETFREQ = 2,
-  GETFREQ = 3,
-  DATA = 4,
-  IDQUERY = 5
-};
 
 enum {
   UART_QUEUE_LEN = 12,
   RADIO_QUEUE_LEN = 12,
 };
 
+/* Transmission power (PA_LEVEL register, see CC2420 Datasheet):
+ *
+ *  31 -> 0 dBm
+ *  27 -> -1 dBm
+ *  23 -> -3 dBm
+ *  19 -> -5 dBm
+ *  15 -> -7 dBm
+ *  11 -> -10 dBm
+ *  7 -> -15 dBm
+ *  3 -> -25 dBm
+ **/
 
-typedef nx_struct NodeIfMsg {
-  nx_uint16_t appid;
+
+typedef nx_struct radio_conf_msg {
   nx_uint16_t nodeid;
-  nx_uint16_t senderid;
-  nx_uint16_t receiverid;
-  nx_uint8_t pcktype;
-  nx_uint16_t value;
-  nx_int8_t rssi;
   nx_uint8_t txpower;
-  nx_uint8_t lqi;
   nx_uint8_t channel;
-} NodeIfMsg,nodeifMsg;
+} radio_conf_msg_t;
+
+typedef nx_struct radio_msg {
+  nx_uint16_t srcid;
+  nx_uint16_t dstid;
+  nx_int8_t data[TOSH_DATA_LENGTH-2*sizeof(nx_uint16_t)];
+} radio_msg_t;
+
 
 #endif //NODEIFMESSAGES_H__
