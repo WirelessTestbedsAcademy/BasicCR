@@ -13,10 +13,15 @@ Requirements
 
         $ pip install  -r requirements.txt
 
-It is possible to run the Docker image build from attached Dockerfile in this repository
+It is possible to pull the Docker image build:
 
+    docker pull wirelesstestbedsacademy/basiccr-twist
+    # or build it yourself:
     docker build -t wta/basiccr-twist .
-    docker run -itP --rm wta/basiccr-twist bash
+
+and run:
+
+    docker run -itP --rm wirelesstestbedsacademy/basiccr-twist bash
 
 
 Execution of Experiment
