@@ -35,11 +35,13 @@ Execution of Experiment
     Additionally it is possible to use `twist.py` interface to install sensor node images on the nodes. This method still requires node reservation on the testbed via web interface.
 
         cd ..
-        ./twist.py -i ./radioapp/build/telosb/main.exe -a
-        ./twist.py -i ./sensorapp/build/telosb/main.exe -n 151
+        ./twist.py -i ./radioapp/build/telosb/main.exe -n 13
+        ./twist.py -i ./sensorapp/build/telosb/main.exe -n 151 -n 152
 
-3. Connect to SSH tunnels
+3. Run the application
 
-        ./twist.py -s -a
+        ./basiccr.py 13 151 152
 
-4. Run the application
+    For demonstration purposes the cognitive radio controller first changes the channel on TX node, sends a packet and only then does it on RX node (and again sends packet)
+
+This application was done for tutorial purposes, so we encourage to look into the code.
