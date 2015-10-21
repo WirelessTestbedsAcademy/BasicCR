@@ -1,11 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-NodeIfAPI.py: Does really cool stuff
+basiccr.py: simple cognitive radio example
+
+    In this example three nodes and python based control applications running
+    on the PC are used. On two nodes one application providing radio interface
+    should be installed. This application provides serial line interface to
+    control the radio. Namely it is possible to set radio parameters by
+    sending control messages over serial interface and send any message over
+    the radio interface. On the third node the spectrum sensing application
+    should be installed. Finally central controller application running on the
+    PC connects to all the nodes, collects information about spectrum usage
+    from sensor application and configures the best channel on the other two
+    nodes.
 
 Usage:
-   NodeIfAPI.py [options] [-q | -v] <sensor> <transmitter> <receiver>
-   NodeIfAPI.py --config
+   basiccr.py [options] [-q | -v] <sensor> <transmitter> <receiver>
+   basiccr.py --config
 
 Devices:
    <sensor>            device for connection
@@ -154,7 +165,7 @@ class Controller(Thread):
 
 
 def main(args):
-    """Run the code for NodeIfAPI"""
+    """Run the code for basiccr"""
     log = logging.getLogger('basiccr.main')
     log.debug(args)
     signal.signal(signal.SIGINT, signal_handler)
@@ -207,7 +218,7 @@ def guess_sfsource(sfsource):
 # def guess_sfsource
 
 def signal_handler(signal, frame):
-    log = logging.getLogger('nodeifapi.sinal')
+    log = logging.getLogger('basiccr.sinal')
     log.debug("You pressed Ctrl+C!")
     sys.exit(0)
 
