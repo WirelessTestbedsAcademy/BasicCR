@@ -228,11 +228,13 @@ def ssh_tunnel(nodes, passwd=None):
 	if passwd is not None:
 		global __ssh_pass__
 		__ssh_pass__ = passwd
+	nodes.sort()
 	args = ["-nNxT4"]
 	for node in nodes:
 		args.append("-L")
 		args.append("9{id:03d}:localhost:9{id:03d}".format(id=node))
 	args.append("twistextern@www.twist.tu-berlin.de")
+	log.info("ssh " + " ".join(args))
 	ssh(args, _out=__ssh_interact__, _out_bufsize=0, _tty_in=True)
 	ssh.wait()
 
