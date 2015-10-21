@@ -17,6 +17,7 @@ RUN apt-get install -y nesc tinyos-tools-devel gcc-msp430
 # Other packages
 RUN apt-get install -y git-core build-essential
 RUN apt-get install -y python-pip python-dev libxml2-dev libxslt1-dev libz-dev
+RUN apt-get install -y screen tmux
 
 RUN locale-gen en_US.UTF-8
 
