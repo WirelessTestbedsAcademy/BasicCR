@@ -22,7 +22,10 @@ It is possible to pull the Docker image build:
 and run:
 
     docker run -itP --rm wirelesstestbedsacademy/basiccr-twist bash
+    # or
+    docker run -itP --rm wta/basiccr-twist bash
 
+It is possible to attach local sensor nodes using `--device=/dev/ttyUSB0` flag.
 
 Execution of Experiment
 -----------------------
