@@ -43,8 +43,8 @@ Execution of Experiment
     Additionally it is possible to use `twist.py` interface to install sensor node images on the nodes. This method still requires node reservation on the testbed via web interface.
 
         cd ..
-        ./twist.py -i ./radioapp/build/telosb/main.exe -n 13
-        ./twist.py -i ./sensorapp/build/telosb/main.exe -n 151 -n 152
+        ./twist.py -i ./radioapp/build/telosb/main.exe -n 151 -n 152
+        ./twist.py -i ./sensorapp/build/telosb/main.exe -n 13
 
 3. Run the application
 
