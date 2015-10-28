@@ -2,7 +2,7 @@
 ##################################################
 # GNU Radio Python Flow Graph
 # Title: Cr Application
-# Generated: Tue Oct  6 11:46:31 2015
+# Generated: Wed Oct 28 10:57:52 2015
 ##################################################
 
 if __name__ == '__main__':
@@ -21,19 +21,16 @@ sys.path.append(os.environ.get('GRC_HIER_PATH', os.path.expanduser('~/.grc_gnura
 
 from PyQt4 import Qt
 from gnuradio import blocks
-from gnuradio import digital
 from gnuradio import eng_notation
 from gnuradio import gr
 from gnuradio import qtgui
 from gnuradio import uhd
 from gnuradio.eng_option import eng_option
 from gnuradio.filter import firdes
-from gnuradio.qtgui import Range, RangeWidget
 from optparse import OptionParser
 from packet_gen import packet_gen
 from sync_blocks import sync_blocks
 import crew
-import numpy
 import sip
 import threading
 import time
@@ -70,7 +67,6 @@ class cr_application(gr.top_block, Qt.QWidget):
         ##################################################
         self.preamble = preamble = [1,-1,1,-1,1,1,-1,-1,1,1,-1,1,1,1,-1,1,1,-1,1,-1,-1,1,-1,-1,1,1,1,-1,-1,-1,1,-1,1,1,1,1,-1,-1,1,-1,1,-1,-1,-1,1,1,-1,-1,-1,-1,1,-1,-1,-1,-1,-1,1,1,1,1,1,1,-1,-1]
         self.usrp_rf_freq = usrp_rf_freq = 2435000000
-        self.usrp_int_freq = usrp_int_freq = 2400000000
         self.tx_pkt_rate = tx_pkt_rate = 157
         self.samp_rate = samp_rate = 200000
         self.preamble_qpsk = preamble_qpsk = map(lambda x: x*(1+1j)/pow(2,0.5), preamble)
@@ -94,11 +90,8 @@ class cr_application(gr.top_block, Qt.QWidget):
         _usrp_rf_freq_thread = threading.Thread(target=_usrp_rf_freq_probe)
         _usrp_rf_freq_thread.daemon = True
         _usrp_rf_freq_thread.start()
-        self._usrp_int_freq_range = Range(2400000000, 2480000000, 5000000, 2400000000, 100)
-        self._usrp_int_freq_win = RangeWidget(self._usrp_int_freq_range, self.set_usrp_int_freq, "usrp_int_freq", "counter_slider")
-        self.top_layout.addWidget(self._usrp_int_freq_win)
         self.uhd_usrp_source_0_0 = uhd.usrp_source(
-        	",".join(("addr=192.168.20.2", "")),
+        	",".join(("addr=192.168.30.2", "")),
         	uhd.stream_args(
         		cpu_format="fc32",
         		channels=range(1),
@@ -108,17 +101,6 @@ class cr_application(gr.top_block, Qt.QWidget):
         self.uhd_usrp_source_0_0.set_center_freq(usrp_rf_freq, 0)
         self.uhd_usrp_source_0_0.set_gain(28, 0)
         self.uhd_usrp_source_0_0.set_antenna("J1", 0)
-        self.uhd_usrp_sink_1 = uhd.usrp_sink(
-        	",".join(("", "")),
-        	uhd.stream_args(
-        		cpu_format="fc32",
-        		args="addr=192.168.60.2",
-        		channels=range(1),
-        	),
-        )
-        self.uhd_usrp_sink_1.set_samp_rate(samp_rate*8)
-        self.uhd_usrp_sink_1.set_center_freq(usrp_int_freq, 0)
-        self.uhd_usrp_sink_1.set_gain(30, 0)
         self.uhd_usrp_sink_0_0 = uhd.usrp_sink(
         	",".join(("addr=192.168.50.2", "")),
         	uhd.stream_args(
@@ -207,36 +189,23 @@ class cr_application(gr.top_block, Qt.QWidget):
         self.packet_gen_0 = packet_gen(
             payload_size=payload_size,
         )
-        self.digital_gfsk_mod_0 = digital.gfsk_mod(
-        	samples_per_symbol=2,
-        	sensitivity=1.0,
-        	bt=0.35,
-        	verbose=False,
-        	log=False,
-        )
         self.crew_packet_decoder_cb_0 = crew.packet_decoder_cb((preamble_qpsk))
+        self.blocks_null_sink_0 = blocks.null_sink(gr.sizeof_char*1)
         self.blocks_multiply_const_vxx_1_0 = blocks.multiply_const_vff((1.0/(tx_pkt_rate), ))
         self.blocks_multiply_const_vxx_1 = blocks.multiply_const_vff((-1.0/(tx_pkt_rate), ))
-        self.blocks_multiply_const_vxx_0_0 = blocks.multiply_const_vcc((1.0/4, ))
-        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, "/users/lwei/GITfolder/wirelessacademy/BasicTx/wilabt/file_sent.txt", True)
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_char*1, "/users/lwei/GITfolder/wirelessacademy/BasicCR/wilabt/file_received.txt", False)
-        self.blocks_file_sink_0.set_unbuffered(False)
+        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, "/root/BasicTxRx/wilabt/file_sent.txt", True)
         self.blocks_add_const_vxx_0 = blocks.add_const_vff((1.0, ))
-        self.analog_random_source_x_1 = blocks.vector_source_b(map(int, numpy.random.randint(0, 256, 1000)), True)
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.analog_random_source_x_1, 0), (self.digital_gfsk_mod_0, 0))    
         self.connect((self.blocks_add_const_vxx_0, 0), (self.crew_db_channel_selector_0, 0))    
         self.connect((self.blocks_file_source_0, 0), (self.packet_gen_0, 0))    
-        self.connect((self.blocks_multiply_const_vxx_0_0, 0), (self.uhd_usrp_sink_1, 0))    
         self.connect((self.blocks_multiply_const_vxx_1, 0), (self.blocks_add_const_vxx_0, 0))    
         self.connect((self.blocks_multiply_const_vxx_1_0, 0), (self.qtgui_number_sink_0, 0))    
-        self.connect((self.crew_packet_decoder_cb_0, 0), (self.blocks_file_sink_0, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 1), (self.blocks_multiply_const_vxx_1, 0))    
         self.connect((self.crew_packet_decoder_cb_0, 1), (self.blocks_multiply_const_vxx_1_0, 0))    
-        self.connect((self.digital_gfsk_mod_0, 0), (self.blocks_multiply_const_vxx_0_0, 0))    
+        self.connect((self.crew_packet_decoder_cb_0, 0), (self.blocks_null_sink_0, 0))    
         self.connect((self.packet_gen_0, 0), (self.uhd_usrp_sink_0_0, 0))    
         self.connect((self.sync_blocks_0, 0), (self.crew_packet_decoder_cb_0, 0))    
         self.connect((self.sync_blocks_0, 0), (self.qtgui_const_sink_x_0_0, 0))    
@@ -259,15 +228,8 @@ class cr_application(gr.top_block, Qt.QWidget):
 
     def set_usrp_rf_freq(self, usrp_rf_freq):
         self.usrp_rf_freq = usrp_rf_freq
-        self.uhd_usrp_source_0_0.set_center_freq(self.usrp_rf_freq, 0)
         self.uhd_usrp_sink_0_0.set_center_freq(self.usrp_rf_freq, 0)
-
-    def get_usrp_int_freq(self):
-        return self.usrp_int_freq
-
-    def set_usrp_int_freq(self, usrp_int_freq):
-        self.usrp_int_freq = usrp_int_freq
-        self.uhd_usrp_sink_1.set_center_freq(self.usrp_int_freq, 0)
+        self.uhd_usrp_source_0_0.set_center_freq(self.usrp_rf_freq, 0)
 
     def get_tx_pkt_rate(self):
         return self.tx_pkt_rate
@@ -282,9 +244,8 @@ class cr_application(gr.top_block, Qt.QWidget):
 
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
-        self.uhd_usrp_sink_1.set_samp_rate(self.samp_rate*8)
-        self.uhd_usrp_source_0_0.set_samp_rate(self.samp_rate)
         self.uhd_usrp_sink_0_0.set_samp_rate(self.samp_rate)
+        self.uhd_usrp_source_0_0.set_samp_rate(self.samp_rate)
 
     def get_preamble_qpsk(self):
         return self.preamble_qpsk
