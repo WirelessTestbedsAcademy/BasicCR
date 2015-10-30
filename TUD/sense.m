@@ -3,7 +3,7 @@
 %Output: matrix whitespace - first column: start of white space area -
 %second column - end of white space areas
 
-function whitespace = sense(frequency, magnitude, treshold)
+function whitespace = sense(frequency, magnitude, treshold, min_space)
 
     %Input data - data(:,1) = frequency - data(:,2) = magnitude
     data = [frequency, magnitude];
@@ -16,10 +16,14 @@ function whitespace = sense(frequency, magnitude, treshold)
         treshold = -90;
     end
     
-    %Define minimum size of white spaces in frequency samples
-    min_samples = 10;
-    delta_f =(data(2,1)-data(1,1));
-    min_space = min_samples*delta_f;    
+    if isempty(treshold)
+        min_space = 1000;
+    end    
+    
+%     %Define minimum size of white spaces in frequency samples
+%     min_samples = 10;
+     delta_f =(data(2,1)-data(1,1));
+%     min_space = min_samples*delta_f;    
     
     %Generate plot? -->y/n
     plot1 = 'y';
@@ -48,7 +52,9 @@ function whitespace = sense(frequency, magnitude, treshold)
             %Define end of white space area  
             stop = data(i,1);
             %Save the start and end of the free space area in whitespace
-            whitespace = [whitespace; start, stop];
+            if (stop - start > min_space) 
+                whitespace = [whitespace; start, stop];
+            end
             sflag=0;
           end
           
@@ -60,11 +66,11 @@ function whitespace = sense(frequency, magnitude, treshold)
           
     end
     
-    if ~isempty(whitespace)
-        %Delete white spaces smaller than minimum size 
-        too_small = find((whitespace(:,2)-whitespace(:,1)) < min_space);
-        whitespace(too_small,:) = [];
-    end
+%     if ~isempty(whitespace)
+%         %Delete white spaces smaller than minimum size 
+%         too_small = find((whitespace(:,2)-whitespace(:,1)) < min_space);
+%         whitespace(too_small,:) = [];
+%     end
 
     %Generate plot 
     if plot1=='y'
